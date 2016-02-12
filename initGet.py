@@ -4,6 +4,24 @@ import time
 import uuid
 import hashlib
 
+import requests
+import re
+import sys
+
+def staticGet(url):
+    hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
+    html = requests.get(url,headers = hea).text
+    titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
+    titleStr = re.sub('%22','',titleStr)
+    listTitle = titleStr.split('%7D%2C%7B')
+    ipPortDict=dict()
+    for lp in listTitle:
+        ipPortDict["".join(re.findall('%2Cport%3A(\d+)',lp))]="".join(re.findall('ip%3A(.*?)%2C',lp))
+#    for k,v in ipPortDict.items():
+#        print(k,v)
+    return ipPortDict
+
+
 def sentmsg(sock,msg) :
     data_length= len(msg)+8
     code=689
@@ -33,56 +51,69 @@ def contentGet(context,tagStr):
     else:
         return '-1'
 
-def main():
+def dynamicGet(address,portid):
+    
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    address = '119.90.49.101'
-    portid=8003
-    sock.connect((address, portid))
+    sock.connect((address, int(portid)))
+    print(address,portid)
     #
-    devid=uuid.uuid1().hex.swapcase().encode('utf-8')
-    intTime=int(time.time())
-    rt=str(intTime).encode('utf-8')
+    devid=uuid.uuid1().hex.swapcase()
+    rt=str(int(time.time()))
     hashvk = hashlib.md5()
-    vk=rt+b'7oE9nPEG9xXV69phU31FYCLUagKeYtsF'+devid
-    hashvk.update(vk)
-    vk = hashvk.hexdigest().encode('utf-8')
-    username = b'visitor2432'
-    password = b'123456'
-    rid=b'16789'
-    gid=b''#b'195'
-    msg=b'type@=loginreq'\
-    +b'/username@='+username\
-    +b'/ct@=0'\
-    +b'/password@='+password\
-    +b'/roomid@='+rid\
-    +b'/devid@='+devid\
-    +b'/rt@='+rt\
-    +b'/vk@='+vk\
-    +b'/ver@=20150929'\
-    +b'/\x00'
-    print(msg)
-    sentmsg(sock,msg)
-    print(sock.recv(1024))
+    vk=rt+'7oE9nPEG9xXV69phU31FYCLUagKeYtsF'+devid
+    #print(vk)
+    hashvk.update(vk.encode('utf-8'))
+    vk = hashvk.hexdigest()
+    username = ''
+    password = ''
+    rid='16789'
+    gid=''#b'195'
+    msg='type@=loginreq'\
+    +'/username@='+username\
+    +'/ct@=0'\
+    +'/password@='+password\
+    +'/roomid@='+rid\
+    +'/devid@='+devid\
+    +'/rt@='+rt\
+    +'/vk@='+vk\
+    +'/ver@=20150929'\
+    +'/\x00'
+    #print(msg)
+    sentmsg(sock,msg.encode('utf-8'))
     context=sock.recv(1024)
-    print(context)
-    gid=contentGet(context,b'gid').encode('utf-8')
-    print(gid)
-    #msg=b'type@=joingroup/rid@='+rid+b'/gid@='+gid+b'/\x00'
-    #sentmsg(sock,msg)
-    #context=sock.recv(1024)
     #print(context)
+    context=context.split(b'\xb2\x02')[1].decode('utf-8')
+    typeID1st=re.findall('type@=(.*?)/',context)[0]
+    if typeID1st != 'error' :
+        sentmsg(sock,msg.encode('utf-8'))
+        context=sock.recv(1024)
+        print(context)
+        context=context.split(b'\xb2\x02')[1]#.decode('utf-8')
+        if re.findall(b'msgrepeaterlist',context):
+            returnDict =content2Dict(context)
+        #returnlist[0]=typeID2st
 
-
-    #context=sock.recv(1024)
-    #print(context)
-    #context=sock.recv(1024)
-    #print(context)
- #   while context.find(b'error'):
-#        context=sock.recv(1024)
-#        tagStr = b'rid'
-#        contentGet(context,tagStr)
-
+    else:
+        returnDict=dict()
     sock.close()
+    #returnDict={'isError':typeID1st,'typeID':typeID2st,'gid':gid,,}
+
+    return returnDict
+
+def main():
+
+    url = 'http://www.douyutv.com/16789'
+    ipPortDict=staticGet(url)
+    for k,v in ipPortDict.items():
+        print(k,v)
+        getDict=dynamicGet(v,k)
+        for dk,dv in getDict.items():
+            print(dk,dv)
+        break
+
+
+
 
 if __name__=='__main__':
     url= sys.argv[1] if len(sys.argv)>1 else 'http://www.douyutv.com/meizhi' 
