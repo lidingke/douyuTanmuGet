@@ -21,33 +21,36 @@ m_deserve_lev@A=0@Scq_cnt@A=0@Sbest_dlev@A=0@Slevel@A=8@Sgt@A=0@S/\x00'
 import re
 
 #def chatmsgGet(chatmsg):
-if chatmsg.find(b'chatmessage'):
-	contentMsg=b''.join(re.findall(b'content@=(.*?)/',chatmsg))
-	snickMsg=b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg))
-	print('hello')
-	print(snickMsg.decode('utf-8'),':',contentMsg.decode('utf-8'))
+# if chatmsg.find(b'chatmessage'):
+# 	contentMsg=b''.join(re.findall(b'content@=(.*?)/',chatmsg))
+# 	snickMsg=b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg))
+# 	print(snickMsg.decode('utf-8'),':',contentMsg.decode('utf-8'))
 
-# def danmuIpNPortGet():
-# 	contextList=sockStr.split(b'\x00"')[0].split(b'\xb2\x02')
+#def danmuIpNPortGet():
+contextList=sockStr.split(b'\x00"')[0].split(b'\xb2\x02')
+tanmuIpNport=dict()
+for cl in contextList:
 
-	# for cl in contextList:
-	# 	tanmuIpNport=dict()
-	# 	cl=cl.decode('utf-8','.ignore')
-	# 	if cl.find('msgrepeaterlist'):
-	# 		clstr=''.join(re.findall('list@=(.*?)/',cl))
+	cl=cl.decode('utf-8','.ignore')
+	#print(cl,len(cl))
+	if re.search('msgrepeaterlist',cl):
+		tanmuIpNport['add']=re.findall('Sip@AA=(.*?)@',cl)
+		tanmuIpNport['port']=re.findall('Sport@AA=(\d+)',cl)
+		#tanmuIpNport[tanmuPort]=tanmuIp
+		print('msgrepeaterlist')
+		#print(tanmuIp[-1],tanmuPort[-1])
+	elif re.search('setmsggroup',cl):
+		tanmuIpNport['gid']=re.findall('gid@=(\d+)/',cl)
+		tanmuIpNport['rid']=re.findall('rid@=(.*?)/',cl)
+		print('setmsggroup')
 
-	# 		for ls in clstr.split('@S'):
-	# 			tanmuIp=''.join(re.findall('Sip@AA=(.*?)@',ls))
-	# 			tanmuPort=''.join(re.findall('Sport@AA=(\d+)',ls))
-	# 			tanmuIpNport[tanmuPort]=tanmuIp
-	# 			print(tanmuIp,tanmuPort)
-	# 	if cl.find('setmsggroup'):
-	# 		tanmuIpNport['gid']=re.findall('gid@=(\d+)/',cl)
-	# 		tanmuIpNport['rid']=re.findall('rid@=(.*?)/',cl)
-	# return tanmuIpNport
+	#print(tanmuIp,tanmuPort)
+#return tanmuIpNport
+for k,v in tanmuIpNport.items():
+	print(k,v)
 
-	# for k,v in tanmuIpNport.items():
-	# 	print(k,v)
+print(tanmuIpNport.get('port')[0])
+
 	
 
 

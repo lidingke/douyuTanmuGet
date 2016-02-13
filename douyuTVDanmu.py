@@ -7,6 +7,9 @@ import hashlib
 import requests
 import re
 import sys
+import threading
+
+
 
 def staticGet(idolid):
     hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
@@ -24,44 +27,21 @@ def staticGet(idolid):
     return logServer
 
 
-
-
-# def content2Dict(context):
-#     context = context.split(b'/')
-#     contextDict=dict()
-#     for pr in context:
-#         prSplit=pr.split(b'@=')
-#         if len(prSplit)>1:         
-#             contextDict[prSplit[0]]=prSplit[1]
-#         else:
-#             contextDict[prSplit[0]]=b'-1'
-#     return contextDict
-
-# def contentGet(context,tagStr):
-#     if context.find(tagStr):
-#         contextDict=content2Dict(context)
-#         return contextDict.get(tagStr,b'-1').decode('utf-8','.ignore')
-#     else:
-#         return '-1'
-
 def danmuServerGet(sockStr):
     contextList=sockStr.split(b'\x00"')[0].split(b'\xb2\x02')
+    danmuServer=dict()
     for cl in contextList:
-        danmuServer=dict()
         cl=cl.decode('utf-8','.ignore')
-        if cl.find('msgrepeaterlist'):
-            clstr=''.join(re.findall('list@=(.*?)/',cl))
-            for ls in clstr.split('@S'):
-                danmuIp=''.join(re.findall('Sip@AA=(.*?)@',ls))
-                danmuPort=''.join(re.findall('Sport@AA=(\d+)',ls))
-                danmuServer[danmuPort]=danmuIp
-                #print(danmuIp,danmuPort)
-        if cl.find('setmsggroup'):
+        if re.search('msgrepeaterlist',cl):
+            danmuServer['add']=re.findall('Sip@AA=(.*?)@',cl)
+            danmuServer['port']=re.findall('Sport@AA=(\d+)',cl)
+        elif re.search('setmsggroup',cl):
             danmuServer['gid']=re.findall('gid@=(\d+)/',cl)
             danmuServer['rid']=re.findall('rid@=(.*?)/',cl)
     return danmuServer
 
-def sentmsg(sock,msg) :
+def sendmsg(sock,msgstr) :
+    msg=msgstr.encode('utf-8')
     data_length= len(msg)+8
     code=689
     msgHead=int.to_bytes(data_length,4,'little')\
@@ -72,24 +52,23 @@ def sentmsg(sock,msg) :
         tn= sock.send(msg[sent:])
         sent= sent + tn
 
+
 def dynamicGet(logServer):
     address = logServer.get('ip')
     portid = logServer.get('port')
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((address, int(portid)))
     print(address,portid)
-    #
     devid=uuid.uuid1().hex.swapcase()
     rt=str(int(time.time()))
     hashvk = hashlib.md5()
     vk=rt+'7oE9nPEG9xXV69phU31FYCLUagKeYtsF'+devid
-    #print(vk)
     hashvk.update(vk.encode('utf-8'))
     vk = hashvk.hexdigest()
     username = ''
     password = ''
     rid=logServer.get('rid')
-    gid=''#b'195'
+    gid=''
     msg='type@=loginreq'\
     +'/username@='+username\
     +'/ct@=0'\
@@ -101,13 +80,13 @@ def dynamicGet(logServer):
     +'/ver@=20150929'\
     +'/\x00'
     #print(msg)
-    sentmsg(sock,msg.encode('utf-8'))
+    sendmsg(sock,msg)
     context=sock.recv(1024)
     #print(context)
     context=context.split(b'\xb2\x02')[1].decode('utf-8')
     typeID1st=re.findall('type@=(.*?)/',context)[0]
     if typeID1st != 'error' :
-        sentmsg(sock,msg.encode('utf-8'))
+        sendmsg(sock,msg)
         context=sock.recv(1024)
         #print(context)
         danmuServer=danmuServerGet(context)
@@ -121,26 +100,44 @@ def dynamicGet(logServer):
 
 def danmuWhile(danmuServer):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    address = b'danmu.douyutv.com'
-    portid=8602
+    address = danmuServer['add'][0]
+    portid=int(danmuServer.get('port')[0])
     sock.connect((address, portid))
     rid=''.join(danmuServer.get('rid'))
-    rid=rid.encode('utf-8')
+    #rid=rid.encode('utf-8')
     gid=''.join(danmuServer.get('gid'))
-    gid=gid.encode('utf-8')
-    msg=b'type@=loginreq/username@=/password@=/roomid@='+rid+b'/\x00'
-    sentmsg(sock,msg)
+    #gid=gid.encode('utf-8')
+    msg='type@=loginreq/username@=/password@=/roomid@='+rid+'/\x00'
+    sendmsg(sock,msg)
     sock2st=sock.recv(1024)
-    msg=b'type@=joingroup/rid@='+rid+b'/gid@='+gid+b'/\x00'
-    sentmsg(sock,msg)
+    msg='type@=joingroup/rid@='+rid+'/gid@='+gid+'/\x00'
+    
+    def keepalive():
+        print('===init keepalive===')
+        while True:
+            print('40sleep')
+            msg='type@=keeplive/tick@='+str(int(time.time()))+'/\x00'
+            sendmsg(sock,msg)
+            time.sleep(40)
+        sock.close()
+
+    threading.Thread(target=keepalive).start()
+    sendmsg(sock,msg)
+    print('danmu proccessing')
     while True:
         chatmsg=sock.recv(1024)
+            #break
         if chatmsg.find(b'chatmessage'):
             contentMsg=b''.join(re.findall(b'content@=(.*?)/',chatmsg))
             snickMsg=b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg))
-            print(snickMsg.decode('utf-8'),':',contentMsg.decode('utf-8'))
+            #if isinstance(snickMsg,str) and isinstance(contentMsg,str):
+            msgprint=snickMsg.decode('utf-8',"replace")+':'+contentMsg.decode('utf-8',"replace")
+            print(msgprint)
+        elif chatmsg.find(b'error'):
+                print('error')
         else:
             print('-1')
+        #break
     sock.close()
 
 def main(idolid):
@@ -152,5 +149,6 @@ def main(idolid):
 
 
 if __name__=='__main__':
-    idolid= sys.argv[1] if len(sys.argv)>1 else 'http://www.douyutv.com/imbabbc' 
+    idolid= sys.argv[1] if len(sys.argv)>1 else 'http://www.douyutv.com/yilidi'
     main(idolid)
+#python3 douyuTVDanmu.py gouzei    
