@@ -6,9 +6,10 @@ def testFun():
     return 'error'
 
 def main():
-    url = 'http://www.douyutv.com/16789'
+    url = 'http://www.douyutv.com/30032'
     hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
     html = requests.get(url,headers = hea).text
+    roomid = "".join(re.findall('task_roomid" value="(\d+)',html))
     titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
     titleStr = re.sub('%22','',titleStr)
     listTitle = titleStr.split('%7D%2C%7B')
@@ -23,7 +24,7 @@ def main():
 
         errorID=testFun()
         print(errorID)
-
+        print(roomid)
 
 if __name__=='__main__':
 #url= sys.argv[1] if len(sys.argv)>1 else 'http://www.douyutv.com/meizhi' 
