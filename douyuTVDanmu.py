@@ -14,7 +14,7 @@ import threading
 def staticGet(idolid):
     hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
     url='http://www.douyutv.com/'+idolid
-    print(url)
+    print('connect url:',url)
     html = requests.get(url,headers = hea).text
     roomid = "".join(re.findall('task_roomid" value="(\d+)',html))
     titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
@@ -24,6 +24,7 @@ def staticGet(idolid):
     logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
     logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
     logServer['rid']=roomid
+    print('Logserver,port:',logServer['port'],'ip:',logServer['ip'],'rid:',logServer['rid'])
     return logServer
 
 
@@ -38,6 +39,7 @@ def danmuServerGet(sockStr):
         elif re.search('setmsggroup',cl):
             danmuServer['gid']=re.findall('gid@=(\d+)/',cl)
             danmuServer['rid']=re.findall('rid@=(.*?)/',cl)
+    print('danmuServer adress:',danmuServer['add'][0],danmuServer['port'][0],'groupID:',danmuServer['gid'])
     return danmuServer
 
 def sendmsg(sock,msgstr) :
@@ -58,7 +60,6 @@ def dynamicGet(logServer):
     portid = logServer.get('port')
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((address, int(portid)))
-    print(address,portid)
     devid=uuid.uuid1().hex.swapcase()
     rt=str(int(time.time()))
     hashvk = hashlib.md5()
@@ -90,7 +91,7 @@ def dynamicGet(logServer):
         context=sock.recv(1024)
         #print(context)
         danmuServer=danmuServerGet(context)
-        print(danmuServer['gid'])
+        print('group ID get:',danmuServer['gid'])
     else:
         danmuServer=dict()
     sock.close()
@@ -126,29 +127,33 @@ def danmuWhile(danmuServer):
     print('danmu proccessing')
     while True:
         chatmsg=sock.recv(1024)
-            #break
-        if chatmsg.find(b'chatmessage'):
-            contentMsg=b''.join(re.findall(b'content@=(.*?)/',chatmsg))
-            snickMsg=b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg))
-            #if isinstance(snickMsg,str) and isinstance(contentMsg,str):
-            msgprint=snickMsg.decode('utf-8',"replace")+':'+contentMsg.decode('utf-8',"replace")
-            print(msgprint)
-        elif chatmsg.find(b'error'):
-                print('error')
-        else:
-            print('-1')
-        #break
+        typeContent = re.search(b'type@=(.*?)/',chatmsg)
+        if typeContent:
+            if typeContent.group(1) == b'chatmessage':
+                #print(chatmsg.find(b'chatmessage'))
+                contentMsg=b''.join(re.findall(b'content@=(.*?)/',chatmsg))
+                snickMsg=b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg))
+                #print(contentMsg,":",snickMsg)
+                try:
+                    msgprint=snickMsg+b':'+contentMsg
+                    msgprint=msgprint.decode('utf-8',"replace")
+                    print(msgprint)
+                except :
+                    print('===GBK encode error, perhaps special string ===')
+            else:
+                pass
+
     sock.close()
 
 def main(idolid):
 
     logServer=staticGet(idolid)
     danmuServer=dynamicGet(logServer)
-    print(danmuServer.get('gid'),danmuServer.get('rid'))
+    #print(danmuServer.get('gid'),danmuServer.get('rid'))
     danmuWhile(danmuServer)
 
 
 if __name__=='__main__':
-    idolid= sys.argv[1] if len(sys.argv)>1 else 'http://www.douyutv.com/yilidi'
+    idolid= sys.argv[1] if len(sys.argv)>1 else '16789'
     main(idolid)
-#python3 douyuTVDanmu.py gouzei    
+#python3 douyuTVDanmu.py 16789    
