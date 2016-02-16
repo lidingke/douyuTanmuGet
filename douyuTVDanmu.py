@@ -112,10 +112,10 @@ def danmuWhile(danmuServer):
     sendmsg(sock,msg)
     sock2st=sock.recv(1024)
     msg='type@=joingroup/rid@='+rid+'/gid@='+gid+'/\x00'
-    
+    whileCodition=True
     def keepalive():
         print('===init keepalive===')
-        while True:
+        while whileCodition:
             print('40sleep')
             msg='type@=keeplive/tick@='+str(int(time.time()))+'/\x00'
             sendmsg(sock,msg)
@@ -125,14 +125,21 @@ def danmuWhile(danmuServer):
     threading.Thread(target=keepalive).start()
     sendmsg(sock,msg)
     print('danmu proccessing')
-    while True:
+    
+    while whileCodition:
         chatmsg=sock.recv(1024)
+        print(chatmsg)
         typeContent = re.search(b'type@=(.*?)/',chatmsg)
         if typeContent:
             if typeContent.group(1) == b'chatmessage':
                 #print(chatmsg.find(b'chatmessage'))
                 contentMsg=b''.join(re.findall(b'content@=(.*?)/',chatmsg))
                 snickMsg=b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg))
+                LocalMsgTime=str(int(time.time()))
+                print(contentMsg)
+                if snickMsg==b'\xe4\xb8\x81\xe6\x9e\x9c' and contentMsg[:4]==b'exit':
+                    print('==========get break target======')
+                    whileCodition=False
                 #print(contentMsg,":",snickMsg)
                 try:
                     msgprint=snickMsg+b':'+contentMsg
@@ -140,6 +147,9 @@ def danmuWhile(danmuServer):
                     print(msgprint)
                 except :
                     print('===GBK encode error, perhaps special string ===')
+            elif typeContent.group(1) == b'keeplive':
+                #timeReturn=b''.join(re.findall(b'tick@=(\d+)/',keeplive))
+                pass
             else:
                 pass
 
@@ -156,4 +166,4 @@ def main(idolid):
 if __name__=='__main__':
     idolid= sys.argv[1] if len(sys.argv)>1 else '16789'
     main(idolid)
-#python3 douyuTVDanmu.py 16789    
+#python3 douyuTVDanmu.py lushicheng    
