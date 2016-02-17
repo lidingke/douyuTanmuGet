@@ -6,12 +6,12 @@ import time
 # 连接到SQLite数据库
 # 数据库文件是test.db
 # 如果文件不存在，会自动在当前目录创建:
-
+roomid=
 snickMsg='16789'
 LocalMsgTime=str(int(time.time()))
 contentMsg='为什么超过长度了还能存进去1为什么超过长度了还能存进去2为什么超过长度了还能存进去3'
 
-sqlTableName='TM'+sqlTime+'RD'+roomid#+'@A'+sqlTime+'.db'
+sqlTableName='TM'+LocalMsgTime+'RD'+roomid#+'@A'+LocalMsgTime+'.db'
 print(sqlTableName)
 conn = sqlite3.connect('tanmu.db')
 # 创建一个Cursor:
@@ -29,10 +29,10 @@ cursor.execute(strEx)
 # namevalue=list()
 # namevalue.append(' sfdsflksjjghfjgkldjfldskjaf')
 idvalue=1
-strEx='insert into '+sqlTableName+' (id, name, word) values ('+roomid+',\''+str(idvalue)+'\',\''+sqlTime+'\')'
+strEx='insert into '+sqlTableName+' (id, name, word) values ('+roomid+',\''+str(idvalue)+'\',\''+LocalMsgTime+'\')'
 print(strEx)
 cursor.execute(strEx)
-#cursor.execute("insert into user (id, name, word) values ('%d','%s','%s')"%(sqlTableName, idvalue, namevalue,sqlTime))
+#cursor.execute("insert into user (id, name, word) values ('%d','%s','%s')"%(sqlTableName, idvalue, namevalue,LocalMsgTime))
 # 通过rowcount获得插入的行数:
 print('rowcount =', cursor.rowcount)
 # 关闭Cursor:
