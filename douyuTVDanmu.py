@@ -12,9 +12,12 @@ import threading
 import copy
 import sqlite3
 
+global whileCodition
+whileCodition = True
 
 def staticGet(idolid):
-    hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
+    hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
+     AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
     url='http://www.douyutv.com/'+idolid
     print('connect url:',url)
     html = requests.get(url,headers = hea).text
@@ -41,7 +44,8 @@ def danmuServerGet(sockStr):
         elif re.search('setmsggroup',cl):
             danmuServer['gid']=re.findall('gid@=(\d+)/',cl)
             danmuServer['rid']=re.findall('rid@=(.*?)/',cl)
-    print('danmuServer adress:',danmuServer['add'][0],danmuServer['port'][0],'groupID:',danmuServer['gid'])
+    print('danmuServer adress:',danmuServer['add'][0],\
+        danmuServer['port'][0],'groupID:',danmuServer['gid'])
     return danmuServer
 
 def sendmsg(sock,msgstr) :
@@ -101,60 +105,61 @@ def dynamicGet(logServer):
 
     return danmuServer
 
-def keeplive(sock,whileCodition):
+def keeplive(sock):
+    global whileCodition
     print('===init keeplive===')
     while whileCodition:
         print('40sleep')
         msg='type@=keeplive/tick@='+str(int(time.time()))+'/\x00'
         sendmsg(sock,msg)
-        keeplive=sock.recv(1024)
-        time.sleep(40)
+        #keeplive=sock.recv(1024)
+        time.sleep(20)
     sock.close()
 
 def save2Sql(sqlTableName,contentSql,snickSql,LocalTimeSql):
-    rlen=len(LocalTimeSql)
-    for LT in range(1,rlen):
-        strEx='insert into '+sqlTableName+' (time, name, word) values\
-         ('+str(LocalTimeSql.pop())+',\''+snickSql.pop()+'\',\''+contentSql.pop()+'\')'
+    print('insql')
+    conn = sqlite3.connect('tanmu.db')
+    cursor = conn.cursor()
+    while LocalTimeSql:
+        strEx='insert into '+sqlTableName+' (time, name, word) values ('\
+            +str(LocalTimeSql.pop())+',\''+snickSql.pop()+'\',\''+contentSql.pop()+'\')'
         cursor.execute(strEx)
+    cursor.close()
+    conn.commit()
+    conn.close()
+    print('===save===')
 
 
-def danmuWhile(sock,whileCodition,sqlTableName):
-
+def danmuWhile(sock,cursor,sqlTableName):
+    global whileCodition
+    contentMsg=list()
+    snickMsg=list()
+    LocalMsgTime=list()
     while whileCodition:
         chatmsg=sock.recv(1024)
-        #print(chatmsg)
-        contentMsg=list()
-        snickMsg=list()
-        LocalMsgTime=list()
         typeContent = re.search(b'type@=(.*?)/',chatmsg)
         if typeContent:
             if typeContent.group(1) == b'chatmessage':
-                #print(chatmsg.find(b'chatmessage'))
-                contentMsg.append(b''.join(re.findall(b'content@=(.*?)/',chatmsg)))
-                snickMsg.append(b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg)))
-                LocalMsgTime.append(int(time.time()))
-                #print(contentMsg)
-                if snickMsg==b'\xe4\xb8\x81\xe6\x9e\x9c' and contentMsg[:4]==b'exit':
-                    print('==========get break target======')
-                    whileCodition=False
-                #print(contentMsg,":",snickMsg)
                 try:
-                    msgprint=snickMsg[-1]+b':'+contentMsg[-1]
-                    msgprint=msgprint.decode('utf-8',"replace")
-                    print(msgprint)
+                    contentMsg.append(b''.join(re.findall(b'content@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
+                    snickMsg.append(b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg)).decode('utf-8',"replace"))
+                    LocalMsgTime.append(int(time.time()))
+                    if snickMsg[-1]=='丁果' and contentMsg[-1][:4]=='exit':
+                        print('==========get break target======')
+                        whileCodition=False
+                    print(snickMsg[-1]+':'+contentMsg[-1])
                 except :
                     print('===GBK encode error, perhaps special string ===')
             elif typeContent.group(1) == b'keeplive':
                 contentSql=copy.deepcopy(contentMsg)
                 snickSql=copy.deepcopy(snickMsg)
                 LocalTimeSql=copy.deepcopy(LocalMsgTime)
+                print(len(LocalMsgTime),len(LocalTimeSql))
                 contentMsg=list()
                 snickMsg=list()
                 LocalMsgTime=list()
+                print(len(LocalMsgTime),len(LocalTimeSql))
                 threading.Thread(target=save2Sql, args=(sqlTableName,contentSql,snickSql,LocalTimeSql,)).start()
-                print('===save===')
-
             else:
                 pass
 
@@ -173,22 +178,25 @@ def danmuProcce(danmuServer):
 
     msg='type@=joingroup/rid@='+rid+'/gid@='+gid+'/\x00'
     sendmsg(sock,msg)
-    whileCodition=True
-    threading.Thread(target=keeplive, args=(sock,whileCodition,)).start()
+
+    threading.Thread(target=keeplive, args=(sock,)).start()
     print('danmu proccessing')
     #open SQL
     startTime=str(int(time.time()))
     conn = sqlite3.connect('tanmu.db')
     cursor = conn.cursor()
     sqlTableName='TM'+startTime+'RD'+rid
-    strEx='create table '+sqlTableName+' (time int(10) primary key, name varchar(10), word varchar(50))'
+    strEx='create table '+sqlTableName+\
+    ' (time int(10), name varchar(10), word varchar(50))'
     cursor.execute(strEx)
-
-    danmuWhile(sock,whileCodition,sqlTableName)
-
     cursor.close()
     conn.commit()
     conn.close()
+    
+
+
+    danmuWhile(sock,cursor,sqlTableName)
+
     sock.close()
 
 def main(idolid):
@@ -201,4 +209,4 @@ def main(idolid):
 if __name__=='__main__':
     idolid= sys.argv[1] if len(sys.argv)>1 else '16789'
     main(idolid)
-#python3 douyuTVDanmu.py 16789   
+#python3 douyuTVDanmu.py 312410  
