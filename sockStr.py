@@ -11,6 +11,7 @@ cd@=6000/maxl@=30/\x00\x9f\x00\x00\x00\x9f\x00\x00\x00\xb2\x02\x00\x00type@=memb
 erinfores/silver@=0/gold@=0/strength@=0/weight@=300633515/exp@=0/curr_exp@=0/lev\
 el@=1/up_need@=1000/fans_count@=636109/fl@=0/list@=/glist@=/\x00K\x00\x00\x00K\x00\x00\x00\xb2\x02\x00\x00rid@=16789/gid@=0/type@=bcrp/pt@=2/pid@=10165/pps@=9107100/rps@=0/\x00'
 
+
 chatmsg=b'U\x01\x00\x00U\x01\x00\x00\xb2\x02\x00\x00type@=chatmessage/rescode@=0/sender@\
 =14761178/content@=\xe6\x88\x91\xe7\x9a\x84\xe6\x98\xbe\xe5\x8d\xa1/snick@=\xe6\x82\
 \x94\xe5\x88\x9d\xe8\xb0\x8ei/cd@=4/maxl@=22/chatmsgid@=e56c175b158649e558b51\d0000000000\
@@ -40,6 +41,13 @@ donateres=b'\xef\x00\x00\x00\xef\x00\x00\x00\xb2\x02\x00\x00type@=donateres/rid@
 @=194/ms@=100/sb@=12861/src_strength@=17400/dst_weight@=301060515/hc@=4/r@=0/gfi\
 d@=1/gfcnt@=0/sui@=id@A=3577140@Srg@A=1@Snick@A=\xe7\x81\xaf\xe5\xa1\x94\xe4\xbc/\x00'
 
+donateres1=b'\xe2\x00\x00\x00\xe2\x00\x00\x00\xb2\x02\x00\x00type@=donateres/rid@=25515/gid\
+@=312/ms@=100/sb@=17/src_strength@=700/dst_weight@=199511153/hc@=1/r@=0/gfid@=1/\
+gfcnt@=0/sui@=id@A=38034385@Srg@A=1@Snick@A=447802922@Scur_lev@A=0@Scq_cnt@A=0@S\
+best_dlev@A=0@Slevel@A=2@S/\x00'
+#dst_weight@=体重
+#255772
+
 bc_buy_deserve=b'\x97\x01\x00\x00\x97\x01\x00\x00\xb2\x02\x00\x00type@=bc_buy_deserve/level@=9/\
 lev@=3/rid@=16789/gid@=194/cnt@=1/hits@=1/sid@=27072146/sui@=id@A=27072146@Sname\
 @A=auto_l1AafOnuG6@Snick@A=\xe5\x8d\x88\xe5\xa4\x9c\xe4\xb8\xb6Slaughter@Srg@A=1\
@@ -51,6 +59,10 @@ onlinegift=b'l\x00\x00\x00l\x00\x00\x00\xb2\x02\x00\x00type@=onlinegift/rid@=167
 25213/gid@=194/sil@=130/if@=6/ct@=0/nn@=\xe4\xba\x91\xe5\xb8\x95/ur@=1/level@=10\
 /\x00'
 
+
+lst=chatmsg.split(b'\xb2\x02')
+for x in lst:
+	print(x)
 #def chatmsgGet(chatmsg):
 # if chatmsg.find(b'chatmessage'):
 # 	contentMsg=b''.join(re.findall(b'content@=(.*?)/',chatmsg))
@@ -58,14 +70,14 @@ onlinegift=b'l\x00\x00\x00l\x00\x00\x00\xb2\x02\x00\x00type@=onlinegift/rid@=167
 # 	print(snickMsg.decode('utf-8'),':',contentMsg.decode('utf-8'))
 #def danmuIpNPortGet():
 
-print(re.findall(b'content@=(.*?)/',chatmsg))
-content=re.search(b'content@=(.*?)/',chatmsg)
-if content:
-	print(content.group(1))
+# print(re.findall(b'content@=(.*?)/',chatmsg))
+# content=re.search(b'content@=(.*?)/',chatmsg)
+# if content:
+# 	print(content.group(1))
 
-content=re.search(b'content@=(.*?)/',onlinegift)
-if content:
-	print(content)
+# content=re.search(b'content@=(.*?)/',onlinegift)
+# if content:
+# 	print(content)
 # contextList=sockStr.split(b'\x00"')[0].split(b'\xb2\x02')
 # tanmuIpNport=dict()
 # for cl in contextList:

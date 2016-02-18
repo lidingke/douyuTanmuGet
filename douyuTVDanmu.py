@@ -118,12 +118,13 @@ def keeplive(sock):
 
 def save2Sql(sqlTableName,contentSql,snickSql,LocalTimeSql):
     print('insql')
-    conn = sqlite3.connect('tanmu.db')
+    conn = sqlite3.connect('douyudanmu.db')
     cursor = conn.cursor()
     while LocalTimeSql:
         strEx='insert into '+sqlTableName+' (time, name, word) values ('\
-            +str(LocalTimeSql.pop())+',\''+snickSql.pop()+'\',\''+contentSql.pop()+'\')'
+            +str(LocalTimeSql[0])+',\''+snickSql[0]+'\',\''+contentSql[0]+'\')'
         cursor.execute(strEx)
+        del(LocalTimeSql[0],snickSql[0],contentSql[0])
     cursor.close()
     conn.commit()
     conn.close()
@@ -136,32 +137,34 @@ def danmuWhile(sock,cursor,sqlTableName):
     snickMsg=list()
     LocalMsgTime=list()
     while whileCodition:
-        chatmsg=sock.recv(1024)
-        typeContent = re.search(b'type@=(.*?)/',chatmsg)
-        if typeContent:
-            if typeContent.group(1) == b'chatmessage':
-                try:
-                    contentMsg.append(b''.join(re.findall(b'content@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
-                    snickMsg.append(b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg)).decode('utf-8',"replace"))
-                    LocalMsgTime.append(int(time.time()))
-                    if snickMsg[-1]=='丁果' and contentMsg[-1][:4]=='exit':
-                        print('==========get break target======')
-                        whileCodition=False
-                    print(snickMsg[-1]+':'+contentMsg[-1])
-                except :
-                    print('===GBK encode error, perhaps special string ===')
-            elif typeContent.group(1) == b'keeplive':
-                contentSql=copy.deepcopy(contentMsg)
-                snickSql=copy.deepcopy(snickMsg)
-                LocalTimeSql=copy.deepcopy(LocalMsgTime)
-                print(len(LocalMsgTime),len(LocalTimeSql))
-                contentMsg=list()
-                snickMsg=list()
-                LocalMsgTime=list()
-                print(len(LocalMsgTime),len(LocalTimeSql))
-                threading.Thread(target=save2Sql, args=(sqlTableName,contentSql,snickSql,LocalTimeSql,)).start()
-            else:
-                pass
+        chatmsgLst=sock.recv(1024).split(b'\xb2\x02')
+        for chatmsg in chatmsgLst[1:]:
+            typeContent = re.search(b'type@=(.*?)/',chatmsg)
+            if typeContent:
+                if typeContent.group(1) == b'chatmessage':
+                    try:
+                        contentMsg.append(b''.join(re.findall(b'content@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
+                        snickMsg.append(b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg)).decode('utf-8',"replace"))
+                        LocalMsgTime.append(int(time.time()))
+                        if snickMsg[-1]=='丁果' and contentMsg[-1][:4]=='exit':
+                            print('==========get break target======')
+                            whileCodition=False
+                        print(snickMsg[-1]+':'+contentMsg[-1])
+                    except :
+                        print('===GBK encode error, perhaps special string ===')
+                elif typeContent.group(1) == b'keeplive':
+                    contentSql=copy.deepcopy(contentMsg)
+                    snickSql=copy.deepcopy(snickMsg)
+                    LocalTimeSql=copy.deepcopy(LocalMsgTime)
+                    contentMsg=list()
+                    snickMsg=list()
+                    LocalMsgTime=list()
+                    threading.Thread(target=save2Sql, args=(sqlTableName,contentSql,snickSql,LocalTimeSql,)).start()
+
+                else:
+                    pass
+                    #print(chatmsg)
+
 
 
 
@@ -183,7 +186,7 @@ def danmuProcce(danmuServer):
     print('danmu proccessing')
     #open SQL
     startTime=str(int(time.time()))
-    conn = sqlite3.connect('tanmu.db')
+    conn = sqlite3.connect('douyudanmu.db')
     cursor = conn.cursor()
     sqlTableName='TM'+startTime+'RD'+rid
     strEx='create table '+sqlTableName+\
@@ -193,8 +196,6 @@ def danmuProcce(danmuServer):
     conn.commit()
     conn.close()
     
-
-
     danmuWhile(sock,cursor,sqlTableName)
 
     sock.close()
@@ -209,4 +210,4 @@ def main(idolid):
 if __name__=='__main__':
     idolid= sys.argv[1] if len(sys.argv)>1 else '16789'
     main(idolid)
-#python3 douyuTVDanmu.py 312410  
+#python3 douyuTVDanmu.py 16789 
