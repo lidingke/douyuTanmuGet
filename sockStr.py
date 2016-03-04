@@ -1,5 +1,5 @@
 import re
-sockStr=b'w\x01\x00\x00w\x01\x00\x00\xb2\x02\x00\x00type@=msgrepeaterlist/rid@=16789/lis\
+msgrepeaterlist=b'w\x01\x00\x00w\x01\x00\x00\xb2\x02\x00\x00type@=msgrepeaterlist/rid@=16789/lis\
 t@=id@AA=75701@ASnr@AA=1@ASml@AA=10000@ASip@AA=danmu.douyutv.com@ASport@AA=12601\
 @AS@Sid@AA=75702@ASnr@AA=1@ASml@AA=10000@ASip@AA=danmu.douyutv.com@ASport@AA=126\
 02@AS@Sid@AA=74004@ASnr@AA=1@ASml@AA=10000@ASip@AA=danmu.douyutv.com@ASport@AA=8\
@@ -11,14 +11,13 @@ cd@=6000/maxl@=30/\x00\x9f\x00\x00\x00\x9f\x00\x00\x00\xb2\x02\x00\x00type@=memb
 erinfores/silver@=0/gold@=0/strength@=0/weight@=300633515/exp@=0/curr_exp@=0/lev\
 el@=1/up_need@=1000/fans_count@=636109/fl@=0/list@=/glist@=/\x00K\x00\x00\x00K\x00\x00\x00\xb2\x02\x00\x00rid@=16789/gid@=0/type@=bcrp/pt@=2/pid@=10165/pps@=9107100/rps@=0/\x00'
 
-
-chatmsg=b'U\x01\x00\x00U\x01\x00\x00\xb2\x02\x00\x00type@=chatmessage/rescode@=0/sender@\
+chatmessage=b'U\x01\x00\x00U\x01\x00\x00\xb2\x02\x00\x00type@=chatmessage/rescode@=0/sender@\
 =14761178/content@=\xe6\x88\x91\xe7\x9a\x84\xe6\x98\xbe\xe5\x8d\xa1/snick@=\xe6\x82\
 \x94\xe5\x88\x9d\xe8\xb0\x8ei/cd@=4/maxl@=22/chatmsgid@=e56c175b158649e558b51\d0000000000\
 /col@=0/ct@=0/gid@=6/rid@=284584/sui@=id@A=14761178@Snick@A=\xe6\x82\x94\
 \xe5\x88\x9d\xe8\xb0\x8ei@Srg@A=1@Spg@A=1@Sstrength@A=11120@Sver@A=20150929@S\
 m_deserve_lev@A=0@Scq_cnt@A=0@Sbest_dlev@A=0@Slevel@A=8@Sgt@A=0@S/\x00'
-#悔初谎i:我的显卡
+#content@=弹幕内容，sinck@=昵称
 
 userrnter=b'`\x01\x00\x00`\x01\x00\x00\xb2\x02\x00\x00type@=userenter/rid@=16789/gid@=194/\
 userinfo@=id@A=27051443@Sname@A=qq_Qq5dQ9et@Snick@A=\xe8\x91\xa3\xe5\xb0\x8f\xe5\
@@ -46,7 +45,6 @@ donateres1=b'\xe2\x00\x00\x00\xe2\x00\x00\x00\xb2\x02\x00\x00type@=donateres/rid
 gfcnt@=0/sui@=id@A=38034385@Srg@A=1@Snick@A=447802922@Scur_lev@A=0@Scq_cnt@A=0@S\
 best_dlev@A=0@Slevel@A=2@S/\x00'
 #dst_weight@=体重
-#255772
 
 bc_buy_deserve=b'\x97\x01\x00\x00\x97\x01\x00\x00\xb2\x02\x00\x00type@=bc_buy_deserve/level@=9/\
 lev@=3/rid@=16789/gid@=194/cnt@=1/hits@=1/sid@=27072146/sui@=id@A=27072146@Sname\

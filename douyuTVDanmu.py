@@ -1,3 +1,6 @@
+#!user/bin/env python3
+
+
 import socket
 import sys
 import time
@@ -19,18 +22,48 @@ def staticGet(idolid):
     hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
      AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
     url='http://www.douyutv.com/'+idolid
-    print('connect url:',url)
     html = requests.get(url,headers = hea).text
-    roomid = "".join(re.findall('task_roomid" value="(\d+)',html))
-    titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
-    titleStr = re.sub('%22','',titleStr)
-    listTitle = titleStr.split('%7D%2C%7B')
+    showStatus=re.search("\"show_status\":(\d+),\"",html)
     logServer=dict()
-    logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
-    logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
-    logServer['rid']=roomid
-    print('Logserver,port:',logServer['port'],'ip:',logServer['ip'],'rid:',logServer['rid'])
-    return logServer
+    if showStatus:
+        if showStatus.group(1)=='1':
+            print('connect url:',url)
+            threading.Thread(target=danmuStatus, args=(idolid,)).start()
+            roomid = "".join(re.findall('task_roomid" value="(\d+)',html))
+            titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
+            titleStr = re.sub('%22','',titleStr)
+            listTitle = titleStr.split('%7D%2C%7B')
+            logServer['status']='1'
+            logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
+            logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
+            logServer['rid']=roomid
+            print('Logserver,port:',logServer['port'],'ip:',logServer['ip'],'rid:',logServer['rid'])
+            return logServer
+        else:
+            print('该主播没有直播')
+            logServer['status']='2'
+            return logServer
+    else:
+            print('找不到页面')
+            logServer['status']='2'
+            return logServer
+
+def danmuStatus(idolid):
+    global whileCodition
+    while whileCodition:
+        print('===show status get===')
+        hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
+         AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
+        url='http://www.douyutv.com/'+idolid
+        html = requests.get(url,headers = hea).text
+        showStatus=re.search("\"show_status\":(\d+),\"",html)
+        if showStatus:
+            if showStatus.group(1)=='1':
+                time.sleep(60)
+            else:
+                whileCodition=False
+                return
+
 
 
 def danmuServerGet(sockStr):
@@ -133,6 +166,7 @@ def save2Sql(sqlTableName,contentSql,snickSql,LocalTimeSql):
 
 def danmuWhile(sock,cursor,sqlTableName):
     global whileCodition
+    print(whileCodition)
     contentMsg=list()
     snickMsg=list()
     LocalMsgTime=list()
@@ -195,7 +229,7 @@ def danmuProcce(danmuServer):
     cursor.close()
     conn.commit()
     conn.close()
-    
+
     danmuWhile(sock,cursor,sqlTableName)
 
     sock.close()
@@ -203,6 +237,8 @@ def danmuProcce(danmuServer):
 def main(idolid):
 
     logServer=staticGet(idolid)
+    if logServer['status']=='2':
+        return
     danmuServer=dynamicGet(logServer)
     danmuProcce(danmuServer)
 
@@ -210,4 +246,4 @@ def main(idolid):
 if __name__=='__main__':
     idolid= sys.argv[1] if len(sys.argv)>1 else '16789'
     main(idolid)
-#python3 douyuTVDanmu.py 16789 
+#python3 douyuTVDanmu.py 16789
