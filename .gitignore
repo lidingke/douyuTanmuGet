@@ -6,4 +6,5 @@ wireshark
 *.swp
 *.bat
 study
-
+exe
+__pycache__

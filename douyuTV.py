@@ -8,6 +8,7 @@ import uuid
 import hashlib
 
 import requests
+from lxml import etree
 import re
 import sys
 import threading
@@ -29,35 +30,79 @@ class DouyuTV(object):
         self.sqlfileName = 'douyudanmu.db'
         self.danmuStatus =True
         self.sqlTableName = 'TM0000RD0000'
+        self.html = None
 
     def islive(self,islive):
         self.islive = islive
 
 
-    def staticGet(self):
+    # def staticGet(self):
+    #     hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
+    #      AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
+    #     url='http://www.douyutv.com/'+self.idolid
+    #     self.html = requests.get(url,headers = hea).text
+    #     html =self.html
+    #     print('connect url:',url)
+    #     roomid = "".join(re.findall('task_roomid" value="(\d+)',html))
+    #     titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
+    #     titleStr = re.sub('%22','',titleStr)
+    #     listTitle = titleStr.split('%7D%2C%7B')
+    #     self.logServer['status']='1'
+    #     self.logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
+    #     self.logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
+    #     self.logServer['rid']=roomid
+    #     print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'])
+
+    def staticRequests(self):
         hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
          AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
         url='http://www.douyutv.com/'+self.idolid
-        html = requests.get(url,headers = hea).text
-        showStatus=re.search("\"show_status\":(\d+),\"",html)
-        if showStatus:
-            if showStatus.group(1)=='1':
-                print('connect url:',url)
-                roomid = "".join(re.findall('task_roomid" value="(\d+)',html))
-                titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
-                titleStr = re.sub('%22','',titleStr)
-                listTitle = titleStr.split('%7D%2C%7B')
-                self.logServer['status']='1'
-                self.logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
-                self.logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
-                self.logServer['rid']=roomid
-                print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'])
-            else:
-                print('该主播没有直播')
-                self.logServer['status']='2'
-        else:
-                print('找不到页面')
-                self.logServer['status']='2'
+        req = requests.get(url,headers = hea)
+        if req:
+            req.encoding = 'utf-8'
+            req = requests.get(url,headers = hea)
+            #req.encoding = 'utf-8'
+            self.selector = etree.HTML(req.text)
+            task_roomid = self.selector.xpath('//*[@id="task_roomid"]')[0]
+            show_status = self.selector.xpath('/html/head/script[2]/text()')[0]
+            room_container = self.selector.xpath('//*[@id="room_container"]/script[4]/text()')[0]
+            task_roomid = task_roomid.get('value')
+            room_container = str(room_container)
+            show_status=re.search("\"show_status\":(\d+),\"",show_status).group(1)
+            titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',room_container))
+            titleStr = re.sub('%22','',titleStr)
+            listTitle = titleStr.split('%7D%2C%7B')
+            self.logServer['status']=show_status
+            self.logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
+            self.logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
+            self.logServer['rid']=task_roomid
+            print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'],'show_status:',show_status)
+
+        # if showStatus:
+        #     if showStatus.group(1)=='1':
+        #         print('connect url:',url)
+        #         roomid = "".join(re.findall('task_roomid" value="(\d+)',html))
+        #         titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',html))
+        #         titleStr = re.sub('%22','',titleStr)
+        #         listTitle = titleStr.split('%7D%2C%7B')
+        #         self.logServer['status']='1'
+        #         self.logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
+        #         self.logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
+        #         self.logServer['rid']=roomid
+        #         print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'])
+        #     else:
+        #         print('该主播没有直播')
+        #         self.logServer['status']='2'
+        # else:
+        #         print('找不到页面')
+        #         self.logServer['status']='2'
+
+    def statusGet(self):
+        return self.logServer['status']
+
+
+    def stop(self):
+        self.islive = False
 
 
     # def danmuStatus(self,danmState):
@@ -129,16 +174,16 @@ class DouyuTV(object):
         +'/vk@='+vk\
         +'/ver@=20150929'\
         +'/\x00'
-        #print(msg)
+        # print(msg)
         self.sendmsg(msg)
         context=self.sock.recv(1024)
-        #print(context)
+        # print(context)
         context=context.split(b'\xb2\x02')[1].decode('utf-8')
         typeID1st=re.findall('type@=(.*?)/',context)[0]
         if typeID1st != 'error' :
             self.sendmsg(msg)
             context=self.sock.recv(1024)
-            #print(context)
+            # print(context)
             self.danmuServerGet(context)
             print('group ID get:',self.danmuServer['gid'])
         else:
@@ -150,7 +195,7 @@ class DouyuTV(object):
     def keeplive(self):
         print('===init keeplive===')
         while self.islive :
-            print('40sleep')
+            #print('40sleep')
             msg='type@=keeplive/tick@='+str(int(time.time()))+'/\x00'
             self.sendmsg(msg)
             #keeplive=sock.recv(1024)
@@ -158,7 +203,7 @@ class DouyuTV(object):
         sock.close()
 
     def save2Sql(self,contentSql,snickSql,LocalTimeSql):
-        print('insql')
+        # print('===insql')
         conn = sqlite3.connect(self.sqlfileName)
         cursor = conn.cursor()
         while LocalTimeSql:
@@ -177,14 +222,16 @@ class DouyuTV(object):
         snickMsg=list()
         LocalMsgTime=list()
         while self.islive:
+
             chatmsgLst=self.sock.recv(1024).split(b'\xb2\x02')
+            #print(chatmsgLst)
             for chatmsg in chatmsgLst[1:]:
                 typeContent = re.search(b'type@=(.*?)/',chatmsg)
                 if typeContent:
-                    if typeContent.group(1) == b'chatmessage':
+                    if typeContent.group(1) == b'chatmsg':
                         try:
-                            contentMsg.append(b''.join(re.findall(b'content@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
-                            snickMsg.append(b''.join(re.findall(b'@Snick@A=(.*?)@',chatmsg)).decode('utf-8',"replace"))
+                            contentMsg.append(b''.join(re.findall(b'txt@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
+                            snickMsg.append(b''.join(re.findall(b'nn@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
                             LocalMsgTime.append(int(time.time()))
                             print(snickMsg[-1]+':'+contentMsg[-1])
                         except :
@@ -216,11 +263,15 @@ class DouyuTV(object):
         threading.Thread(target=DouyuTV.keeplive, args=(self,)).start()
         print('danmu proccessing')
         #open SQL
-        startTime=str(int(time.time()))
+        localTime=time.localtime()
+        tyear=str(localTime.tm_year)
+        tmoon=str(localTime.tm_mon) if len(str(localTime.tm_mon))==2 else '0'+str(localTime.tm_mon)
+        tday=str(localTime.tm_mday) if len(str(localTime.tm_mday))==2 else '0'+str(localTime.tm_mday)
+        dateNow=tyear+tmoon+tday
         conn = sqlite3.connect(self.sqlfileName)
         cursor = conn.cursor()
-        sqlTableName='TM'+startTime+'RD'+rid
-        strEx='create table '+self.sqlTableName+\
+        self.sqlTableName='TM'+dateNow+'RD'+rid
+        strEx='create table if not exists '+self.sqlTableName+\
         ' (time int(10), name varchar(10), word varchar(50))'
         cursor.execute(strEx)
         cursor.close()
@@ -234,7 +285,7 @@ class DouyuTV(object):
 
     def show(self):
 
-        self.staticGet()
+        self.staticRequests()
         #threading.Thread(target=DouyuTV.DouyuTV.danmuStatus, args=(self,)).start()
         print(self.logServer['status'])
         if self.logServer['status']=='2':
@@ -245,6 +296,11 @@ class DouyuTV(object):
         except InterruptedError :
             self.islive=False
 
+
+if __name__=='__main__':
+    idolid= sys.argv[1] if len(sys.argv)>1 else 'yilidi'
+    douyu=DouyuTV(idolid)
+    douyu.show()
 
 
 
