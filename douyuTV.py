@@ -31,6 +31,11 @@ class DouyuTV(object):
         self.danmuStatus =True
         self.sqlTableName = 'TM0000RD0000'
         self.html = None
+        self.hdr = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, sdch',
+    'Accept-Language': 'zh-CN,zh;q=0.8',
+    'Connection': 'keep-alive'}
 
     def islive(self,islive):
         self.islive = islive
@@ -54,29 +59,34 @@ class DouyuTV(object):
     #     print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'])
 
     def staticRequests(self):
-        hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
-         AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
+        # hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
+        #  AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
+        hea = self.hdr
         url='http://www.douyutv.com/'+self.idolid
-        req = requests.get(url,headers = hea)
-        if req:
-            req.encoding = 'utf-8'
+        try:
             req = requests.get(url,headers = hea)
-            #req.encoding = 'utf-8'
-            self.selector = etree.HTML(req.text)
-            task_roomid = self.selector.xpath('//*[@id="task_roomid"]')[0]
-            show_status = self.selector.xpath('/html/head/script[2]/text()')[0]
-            room_container = self.selector.xpath('//*[@id="room_container"]/script[4]/text()')[0]
-            task_roomid = task_roomid.get('value')
-            room_container = str(room_container)
-            show_status=re.search("\"show_status\":(\d+),\"",show_status).group(1)
-            titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',room_container))
-            titleStr = re.sub('%22','',titleStr)
-            listTitle = titleStr.split('%7D%2C%7B')
-            self.logServer['status']=show_status
-            self.logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
-            self.logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
-            self.logServer['rid']=task_roomid
-            print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'],'show_status:',show_status)
+            if req:
+                req.encoding = 'utf-8'
+                # req = requests.get(url,headers = hea)
+                #req.encoding = 'utf-8'
+                self.selector = etree.HTML(req.text)
+                task_roomid = self.selector.xpath('//*[@id="task_roomid"]')[0]
+                show_status = self.selector.xpath('/html/head/script[2]/text()')[0]
+                room_container = self.selector.xpath('//*[@id="room_container"]/script[4]/text()')[0]
+                # room_container = port and host
+                task_roomid = task_roomid.get('value')
+                room_container = str(room_container)
+                show_status=re.search("\"show_status\":(\d+),\"",show_status).group(1)
+                titleStr = "".join(re.findall('"server_config":"%5B%7B(.*?)%7D%5D","def_disp_gg":0};',room_container))
+                titleStr = re.sub('%22','',titleStr)
+                listTitle = titleStr.split('%7D%2C%7B')
+                self.logServer['status']=show_status
+                self.logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
+                self.logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
+                self.logServer['rid']=task_roomid
+                print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'],'show_status:',show_status)
+        except Exception:
+            self.logServer = {'status':'1','port':'8022','ip':'119.90.49.105','rid':self.idolid}
 
         # if showStatus:
         #     if showStatus.group(1)=='1':
@@ -200,7 +210,7 @@ class DouyuTV(object):
             self.sendmsg(msg)
             #keeplive=sock.recv(1024)
             time.sleep(20)
-        sock.close()
+        self.sock.close()
 
     def save2Sql(self,contentSql,snickSql,LocalTimeSql):
         # print('===insql')
@@ -298,7 +308,7 @@ class DouyuTV(object):
 
 
 if __name__=='__main__':
-    idolid= sys.argv[1] if len(sys.argv)>1 else 'yilidi'
+    idolid= sys.argv[1] if len(sys.argv)>1 else '25515'
     douyu=DouyuTV(idolid)
     douyu.show()
 

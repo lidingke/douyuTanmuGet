@@ -1,6 +1,7 @@
 import requests
 import traceback
 import pickle
+import logging
 from lxml import etree
 import sys
 import sqlite3
@@ -27,10 +28,14 @@ class PandaSpider(object):
         self.newThreadList = list()
         self.roomiddict={'10091':'囚徒','10029':'王师傅','31131':'SOL君','10027':'瓦莉拉','10025':'冰蓝飞狐','10003':'星妈'}
         # self.threadList[0] = ['roomid','number','threadID']
+        logging.basicConfig(filename = 'spiderlog.txt', filemode = 'a',
+            level = logging.NOTSET, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.roomidPickleInit()
         self.threadDict = {}
         self.isLive = True
         self.aliveThread = list()
+
+    # def logException(self):
 
 
     def roomidPickleInit(self):
@@ -56,7 +61,8 @@ class PandaSpider(object):
         try:
             r = requests.get(self.url)
         except Exception as e:
-            print(traceback)
+            # print(traceback)
+            logging.exception(e)
             time.sleep(30)
             self.requestData()
         else:
@@ -98,7 +104,7 @@ class PandaSpider(object):
                 #print(strEx)
                 cursor.execute(strEx)
             except sqlite3.OperationalError as e:
-                print(e)
+                print(self.dbName,e)
             except sqlite3.IntegrityError as e :
                 strEx = "insert into " + sqlTableName + "( number ) values (" + star['number'] + ")"
                 print(strEx)
@@ -112,6 +118,7 @@ class PandaSpider(object):
     def initTreadDict(self):
         for star in self.hotStarData:
             threadAdd = PandaTV(star['roomid'])
+            threadAdd.setDaemon(True)
             #print('检测',star['roomid'],type(star),type(star['roomid']))
             time.sleep(1)
             threadAdd.start()
@@ -133,41 +140,43 @@ class PandaSpider(object):
         for threadName,threadAdd in self.threadDict.items():
             roomid = threadName[6:]
             #restart Dead thread
-            if newThreadDict.pop(roomid,None) is not None:
+            if newThreadDict.pop(roomid,False) is not False:
 
                 if threadAdd.isAlive() is False:
-                    time.sleep(1)
+                    print('need to recreat:',self.roomiddict[roomid],'线程状态为',threadAdd.isAlive())
+                    # time.sleep(1)
                     reThreadAdd = PandaTV(roomid)
+                    reThreadAdd.setDaemon(True)
                     reThreadAdd.start()
-                    reThreadDict[roomid] = reThreadAdd
-                    print('recreat:',self.roomiddict[roomid],'线程状态为',
+                    print('recreat:',self.roomiddict[roomid],'线程状态变为',
                         reThreadAdd.isAlive())
+                    reThreadDict[roomid] = reThreadAdd
             else:
                 #kill down hot room
-                print('kill:',self.roomiddict[roomid],'线程状态为',
-                    threadAdd.isAlive())
                 threadAdd.exit()
                 killTread.append(threadName)
+                print('kill:',self.roomiddict[roomid],'线程状态变为',
+                    threadAdd.isAlive())
 
         print('newthreaddict：',len(newThreadDict))
 
-        # del dead thread in threadict
+        # del dead thread in self.threadict
         for deltread in killTread:
             self.threadDict.pop(deltread)
-        # reload thread in threaddict
+        # reload thread in self.threaddict
         for k,v in reThreadDict.items():
-            if self.threadDict.get('k'):
+            if self.threadDict.get(k):
                 self.threadDict[k] = v
         # new thread creater
         if newThreadDict:
             for newName,hotNumber in newThreadDict.items():
                 threadAdd = PandaTV(newName)
-                if self.threadDict.get('panda&'+str(newName),None) is None:
-                    time.sleep(1)
+                if self.threadDict.get('panda&'+str(newName),False) is False:
+                    # time.sleep(1)
                     threadAdd.start()
                     self.threadDict[threadAdd.getName()] = threadAdd
-                    print('creat:',self.roomiddict[newName],'线程状态为',
-                        threadAdd.isAlive(), )
+                    print('creat:',self.roomiddict[newName],'新线程启动状态为',
+                        threadAdd.isAlive())
 
     def getAliveThread(self):
         self.allAliveThread = threading.enumerate()
@@ -227,8 +236,12 @@ class PandaSpider(object):
 
 
 if __name__ == '__main__':
-    panda = PandaSpider()
-    panda.spiderProccess()
+    try:
+        panda = PandaSpider()
+        panda.spiderProccess()
+    except Exception as e:
+        logging.exception(e)
+
 
 #python pandaspider.py
 
