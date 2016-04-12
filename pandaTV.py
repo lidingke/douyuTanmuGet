@@ -163,7 +163,7 @@ class PandaTV(threading.Thread):
     def log2server(self,ftag):
         try:
             data = ftag.text
-            print(data)
+            # print(data)
             # data = ftag.read().decode('utf-8')
             chatInfo = json.loads(data)
             chatAddr = chatInfo['data']['chat_addr_list'][0]

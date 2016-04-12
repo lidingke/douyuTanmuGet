@@ -8,3 +8,5 @@ wireshark
 study
 exe
 __pycache__
+*.db-journal
+

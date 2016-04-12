@@ -12,25 +12,30 @@ from lxml import etree
 import re
 import sys
 import threading
-
+import pickle
 import copy
 import sqlite3
+import queue
+import logging
 
 
-
-class DouyuTV(object):
+class DouyuTV(threading.Thread):
     """docstring for DouyuTV"""
-    def __init__(self, idolid):
+    def __init__(self, roomid):
         super(DouyuTV, self).__init__()
+        threading.Thread.__init__(self)
+        self.roomid = str(roomid)
+        self.name = 'douyu&' + self.roomid
         self.islive = True
         self.logServer={'status':'0'}
-        self.idolid = idolid
-        self.danmuServer={'add':'danmu.douyutv.com','port':'12602','gid':'1','rid':str(idolid)}
+        self.danmuServer={'add':'danmu.douyutv.com','port':'12602','gid':'1','rid':str(roomid)}
         self.sock=None
         self.sqlfileName = 'douyudanmu.db'
         self.danmuStatus =True
         self.sqlTableName = 'TM0000RD0000'
+        self.showQueue = queue.Queue()
         self.html = None
+
         self.hdr = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
     'Accept-Encoding': 'gzip, deflate, sdch',
@@ -41,10 +46,22 @@ class DouyuTV(object):
         self.islive = islive
 
 
+    def roomidDictGet(self):
+        try:
+            with open('douyuRoomid.pickle', 'rb') as f:
+                self.roomiddict = pickle.load(f)
+        except FileNotFoundError:
+            self.roomiddict = {}
+        except EOFError:
+            self.roomiddict = {}
+
+        self.roomidDictRe =  dict([(v,k) for k,v in self.roomiddict.items()])
+
+
     # def staticGet(self):
     #     hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
     #      AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
-    #     url='http://www.douyutv.com/'+self.idolid
+    #     url='http://www.douyutv.com/'+self.roomid
     #     self.html = requests.get(url,headers = hea).text
     #     html =self.html
     #     print('connect url:',url)
@@ -62,7 +79,7 @@ class DouyuTV(object):
         # hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
         #  AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
         hea = self.hdr
-        url='http://www.douyutv.com/'+self.idolid
+        url='http://www.douyutv.com/'+self.roomid
         try:
             req = requests.get(url,headers = hea)
             if req:
@@ -84,9 +101,9 @@ class DouyuTV(object):
                 self.logServer['port']=''.join(re.findall('%2Cport%3A(\d+)',listTitle[2]))
                 self.logServer['ip']=''.join(re.findall('ip%3A(.*?)%2C',listTitle[2]))
                 self.logServer['rid']=task_roomid
-                print('self.logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'],'show_status:',show_status)
+                # print('logServer,port:',self.logServer['port'],'ip:',self.logServer['ip'],'rid:',self.logServer['rid'],'show_status:',show_status)
         except Exception:
-            self.logServer = {'status':'1','port':'8022','ip':'119.90.49.105','rid':self.idolid}
+            self.logServer = {'status':'1','port':'8022','ip':'119.90.49.105','rid':self.roomid}
 
         # if showStatus:
         #     if showStatus.group(1)=='1':
@@ -120,7 +137,7 @@ class DouyuTV(object):
     #         print('===show status get===')
     #         hea = {'User-Agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64)\
     #          AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.118 Safari/537.36'}
-    #         url='http://www.douyutv.com/'+idolid
+    #         url='http://www.douyutv.com/'+roomid
     #         html = requests.get(url,headers = hea).text
     #         showStatus=re.search("\"show_status\":(\d+),\"",html)
     #         if showStatus:
@@ -195,7 +212,7 @@ class DouyuTV(object):
             context=self.sock.recv(1024)
             # print(context)
             self.danmuServerGet(context)
-            print('group ID get:',self.danmuServer['gid'])
+            # print('group ID get:',self.danmuServer['gid'])
         else:
             self.danmuServer['gid']='-1'
         self.sock.close()
@@ -224,7 +241,7 @@ class DouyuTV(object):
         cursor.close()
         conn.commit()
         conn.close()
-        print('===save===')
+        # print('===save===')
 
 
     def danmuWhile(self):
@@ -232,8 +249,10 @@ class DouyuTV(object):
         snickMsg=list()
         LocalMsgTime=list()
         while self.islive:
-
-            chatmsgLst=self.sock.recv(1024).split(b'\xb2\x02')
+            try:
+                chatmsgLst=self.sock.recv(1024).split(b'\xb2\x02')
+            except ConnectionAbortedError:
+                return
             #print(chatmsgLst)
             for chatmsg in chatmsgLst[1:]:
                 typeContent = re.search(b'type@=(.*?)/',chatmsg)
@@ -243,7 +262,8 @@ class DouyuTV(object):
                             contentMsg.append(b''.join(re.findall(b'txt@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
                             snickMsg.append(b''.join(re.findall(b'nn@=(.*?)/',chatmsg)).decode('utf-8',"replace"))
                             LocalMsgTime.append(int(time.time()))
-                            print(snickMsg[-1]+':'+contentMsg[-1])
+                            strprint = snickMsg[-1]+':'+contentMsg[-1]
+                            self.showQueue.put(strprint)
                         except :
                             print('===GBK encode error, perhaps special string ===')
                     elif typeContent.group(1) == b'keeplive':
@@ -271,7 +291,7 @@ class DouyuTV(object):
         self.sendmsg(msg)
 
         threading.Thread(target=DouyuTV.keeplive, args=(self,)).start()
-        print('danmu proccessing')
+        # print('danmu proccessing')
         #open SQL
         localTime=time.localtime()
         tyear=str(localTime.tm_year)
@@ -292,14 +312,40 @@ class DouyuTV(object):
 
         self.sock.close()
 
+    def show2cmd(self):
+        while self.islive :
+            while self.showQueue.empty() is not None :
+                strprint = self.showQueue.get()
+                try:
+                    print(strprint)
+                except UnicodeEncodeError:
+                    logging.exception('===UnicodeEncodeError===')
 
-    def show(self):
+    # def show(self):
 
+    #     self.staticRequests()
+    #     #threading.Thread(target=DouyuTV.DouyuTV.danmuStatus, args=(self,)).start()
+    #     # print(self.logServer['status'])
+    #     # # if self.logServer['status']=='2':
+    #     # #     return -1
+    #     self.dynamicGet()
+    #     try:
+    #         self.danmuProcce()
+    #     except InterruptedError :
+    #         self.islive=False
+    def exit(self):
+        print('Thread:',self.name,'end')
+        try:
+            self.sock.close()
+        except AttributeError:
+            pass
+        self.islive = False
+
+
+    def run(self):
+        # threading.Thread(target=PandaTV.show2cmd, args=(self,)).start()
+        self.roomidDictGet()
         self.staticRequests()
-        #threading.Thread(target=DouyuTV.DouyuTV.danmuStatus, args=(self,)).start()
-        print(self.logServer['status'])
-        if self.logServer['status']=='2':
-            return -1
         self.dynamicGet()
         try:
             self.danmuProcce()
@@ -308,9 +354,9 @@ class DouyuTV(object):
 
 
 if __name__=='__main__':
-    idolid= sys.argv[1] if len(sys.argv)>1 else '25515'
-    douyu=DouyuTV(idolid)
-    douyu.show()
+    roomid= sys.argv[1] if len(sys.argv)>1 else '48699'
+    douyu=DouyuTV(roomid)
+    douyu.start()
 
 
 

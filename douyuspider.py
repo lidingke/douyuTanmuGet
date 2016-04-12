@@ -1,34 +1,33 @@
 import requests
-import traceback
 import pickle
 import logging
 from lxml import etree
 import sys
+import pdb
 import sqlite3
 import time
-from pandaTV import PandaTV
-import copy
+from douyuTV import DouyuTV
 import threading
 
-class PandaSpider(object):
-    """docstring for pandaSpider"""
+class DouyuSpider(object):
+    """docstring for douyuSpider"""
     def __init__(self):
-        super(PandaSpider, self).__init__()
-        self.url = 'http://www.panda.tv/cate/hearthstone'
-        # self.url = 'http://www.panda.tv/cate/lol'
-        self.numTop = 2000
+        super(DouyuSpider, self).__init__()
+        self.url = 'http://www.douyu.com/directory/game/How'
+        self.numTop = 10000
         self.reloadtime = 30
         self.name = list()
         self.title = list()
         self.number = list()
         self.roomid = list()
         self.hotStarData = list()
-        self.dbName = 'pandaData.db'
+        self.dbName = 'douyuData.db'
+        self.roomidsave = 'douyuRoomid.pickle'
         self.threadList = list()
         self.newThreadList = list()
-        self.roomiddict={'10091':'囚徒','10029':'王师傅','31131':'SOL君','10027':'瓦莉拉','10025':'冰蓝飞狐','10003':'星妈'}
+        self.roomiddict={}
         # self.threadList[0] = ['roomid','number','threadID']
-        logging.basicConfig(filename = 'spiderlog.txt', filemode = 'a',
+        logging.basicConfig(filename = 'douyuspiderlog.txt', filemode = 'a',
             level = logging.NOTSET, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.roomidPickleInit()
         self.threadDict = {}
@@ -41,19 +40,18 @@ class PandaSpider(object):
     def roomidPickleInit(self):
         self.roomiddict = dict()
         try:
-            with open('roomiddict.pickle', 'rb') as f:
+            with open(self.roomidsave, 'rb') as f:
                 self.roomiddict = pickle.load(f)
         except FileNotFoundError:
-            with open('roomiddict.pickle', 'wb') as f1:
-                entryinit = {'10091':'囚徒','10029':'王师傅','31131':'SOL君',
-                '10027':'瓦莉拉','10025':'冰蓝飞狐','10003':'星妈'}
+            with open(self.roomidsave, 'wb') as f1:
+                entryinit = {}
                 pickle.dump(entryinit, f1)
-            with open('roomiddict.pickle', 'rb') as f2:
+            with open(self.roomidsave, 'rb') as f2:
                 self.roomiddict = pickle.load(f2)
 
     def roomidPickleSave(self):
         print('save a roomid.pickle len = ',len(self.roomiddict))
-        with open('roomiddict.pickle', 'wb') as f:
+        with open(self.roomidsave, 'wb') as f:
             pickle.dump(self.roomiddict, f)
 
 
@@ -61,18 +59,29 @@ class PandaSpider(object):
         try:
             r = requests.get(self.url)
         except Exception as e:
-            # print(traceback)
-            logging.exception(e)
-            time.sleep(30)
-            self.requestData()
+            raise e
+            # # print(traceback)
+            # logging.exception(e)
+            # time.sleep(30)
+            # self.requestData()
         else:
             r.encoding = 'utf-8'
             selector = etree.HTML(r.text)
-            self.name = selector.xpath('//*[@id="sortdetail-container"]/li/a/div[3]/span[1]/text()')
-            self.title = selector.xpath('//*[@id="sortdetail-container"]/li/a/div[2]/text()')
-            self.number = selector.xpath('//*[@id="sortdetail-container"]/li/a/div[3]/span[2]/text()')
-            roomidElement = selector.xpath('//*[@id="sortdetail-container"]/li/a')#atribute
-            self.roomid = [x.get('data-id') for x in roomidElement]
+            self.name = selector.xpath('//*[@id="live-list-contentbox"]/li/a/div/p/span[1]/text()')
+            self.title = selector.xpath('//*[@id="live-list-contentbox"]/li/a/div/div/h3/text()')
+            strnumber = selector.xpath('//*[@id="live-list-contentbox"]/li/a/div/p/span[2]/text()')
+            self.number = list()
+            for num in strnumber:
+                if num.find('万') > 0:
+                    # pdb.set_trace()
+                    self.number.append(int(eval(num[:-1])*10000))
+                else:
+                    self.number.append(int(num))
+            # print(self.number)
+            roomidElement = selector.xpath('//*[@id="live-list-contentbox"]/li')#atribute
+            self.roomid = [x.attrib.get('data-rid') for x in roomidElement]
+            # pdb.set_trace()
+            # print('douyu')
             print('获取',len(self.name),'条name信息',len(self.title),'条title信息',len(self.number),'条number信息',len(self.roomid),'条roomid信息。')
 
 
@@ -87,19 +96,21 @@ class PandaSpider(object):
             if int(number) > self.numTop:
                 self.hotStarData.append({'name':name,'title':title,'number':number,'roomid':roomid})
             self.roomiddict[roomid] = name
+        # print(self.hotStarData)
 
     def save2sql(self):
         for star in self.hotStarData:
+            # pdb.set_trace()
             conn = sqlite3.connect(self.dbName)
             cursor = conn.cursor()
             nowTime = str(int(time.time()))
-            sqlTableName = 'pTV' + star['roomid']
+            sqlTableName = 'dTV' + star['roomid']
             try:
                 strEx='create table if not exists '+sqlTableName+' (time int(10) primary key, name varchar(10),\
                 title varchar(20), number varchar(10), roomid varchar(10))'
                 cursor.execute(strEx)
                 strEx = "insert into " + sqlTableName + "(time, name, title, number, roomid) values ("\
-                + nowTime+ ",' " + star['name'] + " ' , ' " + star['title'] + " ' , ' " + star['number'] + " ' , ' " + star['roomid'] +" ' )"
+                + nowTime+ ",' " + star['name'] + " ' , ' " + star['title'] + " ' , ' " + str(star['number']) + " ' , ' " + star['roomid'] +" ' )"
 
                 #print(strEx)
                 cursor.execute(strEx)
@@ -116,18 +127,18 @@ class PandaSpider(object):
 
 
     def initTreadDict(self):
+        # pdb.set_trace()
         for star in self.hotStarData:
-            threadAdd = PandaTV(star['roomid'])
+            threadAdd = DouyuTV(star['roomid'])
             threadAdd.setDaemon(True)
-            #print('检测',star['roomid'],type(star),type(star['roomid']))
+            # print('检测',star['roomid'],type(star),type(star['roomid']))
             time.sleep(1)
             threadAdd.start()
             self.threadDict[threadAdd.getName()] = threadAdd
+            # pdb.set_trace()
             print(self.roomiddict[threadAdd.getName()[6:]],'线程初始化')
-            #panda thread name = "panda&" + roomid
+            #douyu thread name = "douyu&" + roomid
         print(len(self.hotStarData),'个弹幕记录线程初始化')
-
-
 
 
     def newThreadCreate(self):
@@ -145,7 +156,7 @@ class PandaSpider(object):
                 if threadAdd.isAlive() is False:
                     print('need to recreat:',self.roomiddict[roomid],'线程状态为',threadAdd.isAlive())
                     # time.sleep(1)
-                    reThreadAdd = PandaTV(roomid)
+                    reThreadAdd = DouyuTV(roomid)
                     reThreadAdd.setDaemon(True)
                     reThreadAdd.start()
                     print('recreat:',self.roomiddict[roomid],'线程状态变为',
@@ -170,8 +181,9 @@ class PandaSpider(object):
         # new thread creater
         if newThreadDict:
             for newName,hotNumber in newThreadDict.items():
-                threadAdd = PandaTV(newName)
-                if self.threadDict.get('panda&'+str(newName),False) is False:
+                threadAdd = DouyuTV(newName)
+                threadAdd.setDaemon(True)
+                if self.threadDict.get('douyu&'+str(newName),False) is False:
                     # time.sleep(1)
                     threadAdd.start()
                     self.threadDict[threadAdd.getName()] = threadAdd
@@ -185,7 +197,7 @@ class PandaSpider(object):
         # print(self.allAliveThread)
         for x in self.allAliveThread:
             name = x.getName()[:5]
-            if name == 'panda':
+            if name == 'douyu':
                 self.aliveThread.append(x)
         #print(self.aliveThread)
         print('thread num :',len(self.aliveThread))
@@ -204,7 +216,7 @@ class PandaSpider(object):
 
     def exit(self):
         self.isLive = False
-        print('exit pandaTV')
+        print('exit DouyuTV')
 
 
     def spiderProccess(self):
@@ -216,11 +228,13 @@ class PandaSpider(object):
         self.hotStarDataGet()
         self.save2sql()
         self.show()
+
         self.initTreadDict()
+        # pdb.set_trace()
         self.roomidPickleSave()
 
         while self.isLive:
-
+            #
             self.requestData()
             self.hotStarDataGet()
             self.save2sql()
@@ -237,11 +251,11 @@ class PandaSpider(object):
 
 if __name__ == '__main__':
     try:
-        panda = PandaSpider()
-        panda.spiderProccess()
+        douyu = DouyuSpider()
+        douyu.spiderProccess()
     except Exception as e:
         logging.exception(e)
 
 
-#python pandaspider.py
+#python douyuspider.py
 
