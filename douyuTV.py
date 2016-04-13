@@ -35,6 +35,8 @@ class DouyuTV(threading.Thread):
         self.sqlTableName = 'TM0000RD0000'
         self.showQueue = queue.Queue()
         self.html = None
+        logging.basicConfig(filename = 'log.txt', filemode = 'a',
+            level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
 
         self.hdr = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -224,7 +226,11 @@ class DouyuTV(threading.Thread):
         while self.islive :
             #print('40sleep')
             msg='type@=keeplive/tick@='+str(int(time.time()))+'/\x00'
-            self.sendmsg(msg)
+            try:
+                self.sendmsg(msg)
+            except OSError:
+                self.exit()
+
             #keeplive=sock.recv(1024)
             time.sleep(20)
         self.sock.close()
@@ -236,7 +242,14 @@ class DouyuTV(threading.Thread):
         while LocalTimeSql:
             strEx='insert into '+self.sqlTableName+' (time, name, word) values ('\
                 +str(LocalTimeSql[0])+',\''+snickSql[0]+'\',\''+contentSql[0]+'\')'
-            cursor.execute(strEx)
+            try:
+                cursor.execute(strEx)
+            # except Exception:
+            except sqlite3.OperationalError:
+                print('danmu database is busy! data is not save')
+            except Exception as e:
+                logging.exception(e)
+
             del(LocalTimeSql[0],snickSql[0],contentSql[0])
         cursor.close()
         conn.commit()
