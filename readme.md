@@ -1,6 +1,6 @@
 # douyuTV and pandaTV danmu recorder
 
-## how to use
+## Usage
 
 
 ###in script:

@@ -45,7 +45,7 @@ class PandaTV(threading.Thread):
         #HOSTER = '90'
         self.islive=True
         logging.basicConfig(filename = 'log.txt', filemode = 'a',
-            level = logging.NOTSET, format = '%(asctime)s - %(levelname)s: %(message)s')
+            level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
 
         self.showQueue = queue.Queue()
         self.url = self.CHATINFOURL + self.roomid
@@ -163,7 +163,7 @@ class PandaTV(threading.Thread):
     def log2server(self,ftag):
         try:
             data = ftag.text
-            # print(data)
+            print(data)
             # data = ftag.read().decode('utf-8')
             chatInfo = json.loads(data)
             chatAddr = chatInfo['data']['chat_addr_list'][0]

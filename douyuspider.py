@@ -162,6 +162,7 @@ class DouyuSpider(object):
                     print('recreat:',self.roomiddict[roomid],'线程状态变为',
                         reThreadAdd.isAlive())
                     reThreadDict[roomid] = reThreadAdd
+                    # raise Exception('father 666')
             else:
                 #kill down hot room
                 threadAdd.exit()
@@ -216,7 +217,7 @@ class DouyuSpider(object):
 
     def exit(self):
         self.isLive = False
-        print('exit DouyuTV')
+        print('exit DouyuTVspider')
 
 
     def spiderProccess(self):
@@ -255,6 +256,7 @@ if __name__ == '__main__':
         douyu.spiderProccess()
     except Exception as e:
         logging.exception(e)
+        douyu.exit()
 
 
 #python douyuspider.py

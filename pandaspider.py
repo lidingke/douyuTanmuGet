@@ -14,8 +14,8 @@ class PandaSpider(object):
     """docstring for pandaSpider"""
     def __init__(self):
         super(PandaSpider, self).__init__()
-        self.url = 'http://www.panda.tv/cate/hearthstone'
-        # self.url = 'http://www.panda.tv/cate/lol'
+        # self.url = 'http://www.panda.tv/cate/hearthstone'
+        self.url = 'http://www.panda.tv/cate/lol'
         self.numTop = 2000
         self.reloadtime = 30
         self.name = list()
@@ -29,7 +29,7 @@ class PandaSpider(object):
         self.roomiddict={'10091':'囚徒','10029':'王师傅','31131':'SOL君','10027':'瓦莉拉','10025':'冰蓝飞狐','10003':'星妈'}
         # self.threadList[0] = ['roomid','number','threadID']
         logging.basicConfig(filename = 'spiderlog.txt', filemode = 'a',
-            level = logging.NOTSET, format = '%(asctime)s - %(levelname)s: %(message)s')
+            level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.roomidPickleInit()
         self.threadDict = {}
         self.isLive = True
@@ -171,6 +171,7 @@ class PandaSpider(object):
         if newThreadDict:
             for newName,hotNumber in newThreadDict.items():
                 threadAdd = PandaTV(newName)
+                threadAdd.setDaemon(True)
                 if self.threadDict.get('panda&'+str(newName),False) is False:
                     # time.sleep(1)
                     threadAdd.start()
@@ -241,6 +242,7 @@ if __name__ == '__main__':
         panda.spiderProccess()
     except Exception as e:
         logging.exception(e)
+        panda.exit()
 
 
 #python pandaspider.py
