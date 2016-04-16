@@ -11,11 +11,14 @@ import copy
 import threading
 
 class PandaSpider(object):
-    """docstring for pandaSpider"""
-    def __init__(self):
+    """docstring for pandaSpider
+    game = 'hearthstone'
+    this is the default game, the last address of game area
+    """
+    def __init__(self,game = 'hearthstone'):
         super(PandaSpider, self).__init__()
-        # self.url = 'http://www.panda.tv/cate/hearthstone'
-        self.url = 'http://www.panda.tv/cate/lol'
+        self.url = 'http://www.panda.tv/cate/'+game
+        # self.url = 'http://www.panda.tv/cate/lol'
         self.numTop = 2000
         self.reloadtime = 30
         self.name = list()
@@ -233,6 +236,17 @@ class PandaSpider(object):
                 self.newThreadCreate()
             time.sleep(self.reloadtime)
 
+    def run(self):
+        try:
+            # douyu = DouyuSpider()
+            self.spiderProccess()
+        except IOError as e:
+            logging.exception(e)
+        except RuntimeError as e:
+            logging.exception(e)
+            self.exit()
+        except Exception as e:
+            logging.exception(e)
 
 
 

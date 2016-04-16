@@ -10,10 +10,13 @@ from douyuTV import DouyuTV
 import threading
 
 class DouyuSpider(object):
-    """docstring for douyuSpider"""
-    def __init__(self):
+    """docstring for douyuSpider
+    game = 'How'
+    this is the default game, the last address of game area
+    """
+    def __init__(self,game = 'How'):
         super(DouyuSpider, self).__init__()
-        self.url = 'http://www.douyu.com/directory/game/How'
+        self.url = 'http://www.douyu.com/directory/game/'+game
         self.numTop = 10000
         self.reloadtime = 30
         self.name = list()
@@ -247,16 +250,31 @@ class DouyuSpider(object):
                 self.newThreadCreate()
             time.sleep(self.reloadtime)
 
-
+    def run(self):
+        try:
+            # douyu = DouyuSpider()
+            self.spiderProccess()
+        except IOError as e:
+            logging.exception(e)
+        except RuntimeError as e:
+            logging.exception(e)
+            self.exit()
+        except Exception as e:
+            logging.exception(e)
 
 
 if __name__ == '__main__':
     try:
         douyu = DouyuSpider()
         douyu.spiderProccess()
+    except IOError as e:
+        logging.exception(e)
+    except RuntimeError as e:
+        logging.exception(e)
+        douyu .exit()
     except Exception as e:
         logging.exception(e)
-        douyu.exit()
+        # douyu.exit()
 
 
 #python douyuspider.py

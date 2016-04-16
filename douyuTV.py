@@ -366,6 +366,7 @@ class DouyuTV(threading.Thread):
             self.islive=False
 
 
+
 if __name__=='__main__':
     roomid= sys.argv[1] if len(sys.argv)>1 else '48699'
     douyu=DouyuTV(roomid)
