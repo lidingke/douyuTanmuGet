@@ -6,44 +6,31 @@ from pandaspider import PandaSpider
 import time
 import pdb
 
-class god(object):
-    """docstring for god"""
+class God(object):
+    """docstring for God"""
     def __init__(self, guest):
-        super(god, self).__init__()
+        super(God, self).__init__()
         self.guest = guest
         self.process = Process(target=self.guestpro)
         self.process.start()
         print('process start')
 
-
-
     def guestpro(self):
-        # self.guest = DouyuSpider()
         self.guest.run()
-        # t.run()
-        # pass
 
-    def warcher(self):
+    def run(self):
         while True:
-            time.sleep(30)
+            time.sleep(60)
             if self.process.is_alive() == False:
                 print('restart')
                 self.process = Process(target=self.guestpro)
                 self.process.start()
 
 
-    def run(self):
-        # pass
-        self.warcher()
-        # threading.Thread(target = god.t,).start()
-
-
-
-
 if __name__ == '__main__':
-    god(PandaSpider()).run()
+    God(PandaSpider()).run()
     time.sleep(100)
-    god(DouyuSpider()).run()
+    God(DouyuSpider()).run()
     # g.run()
 
 

@@ -192,9 +192,9 @@ class PandaSpider(object):
             if name == 'panda':
                 self.aliveThread.append(x)
         #print(self.aliveThread)
-        print('thread num :',len(self.aliveThread))
-
-
+        print('spider num :',len(self.aliveThread),'dict num:',len(self.threadDict))
+        if len(self.aliveThread) > len(self.threadDict):
+            raise AssertionError('spider num ERROR')
 
 
     def show(self):
@@ -245,18 +245,19 @@ class PandaSpider(object):
         except RuntimeError as e:
             logging.exception(e)
             self.exit()
+            raise e
+        except AssertionError as e:
+            logging.exception(e)
+            self.exit()
+            raise e
         except Exception as e:
             logging.exception(e)
 
 
 
 if __name__ == '__main__':
-    try:
-        panda = PandaSpider()
-        panda.spiderProccess()
-    except Exception as e:
-        logging.exception(e)
-        panda.exit()
+    from mulpro import God
+    God(PandaSpider()).run()
 
 
 #python pandaspider.py

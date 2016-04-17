@@ -204,7 +204,31 @@ class DouyuSpider(object):
             if name == 'douyu':
                 self.aliveThread.append(x)
         #print(self.aliveThread)
-        print('thread num :',len(self.aliveThread))
+        print('spider num :',len(self.aliveThread),'dict num:',len(self.threadDict))
+        if len(self.aliveThread) > len(self.threadDict):
+            raise AssertionError('more ERROR thread')
+
+
+
+        # <script !对比两个线程>
+        # allspider = self.aliveThread
+        # while allspider:
+        #     alin = allspider.pop()
+        #     if allspider:
+        #         for x in allspider:
+        #             if alin.getName() == x.getName():
+        #                 alin.exit()
+        #                 x.exit()
+        #                 print('repeat spider ')
+        #                 print('kill:',self.roomiddict[alin.getName()[6:]],'线程状态变为',
+        #                     alin.isAlive())
+        #                 print('kill:',self.roomiddict[x.getName()[6:]],'线程状态变为',
+        #                     x.isAlive())
+        #                 self.threadDict.pop(alin.getName())
+        #                 self.threadDict.pop(x.getName())
+        # </script>
+                        #kill repeat spider
+                        # raise AssertionError('')
 
 
 
@@ -239,11 +263,12 @@ class DouyuSpider(object):
 
         while self.isLive:
             #
+            self.getAliveThread()
             self.requestData()
             self.hotStarDataGet()
             self.save2sql()
             self.show()
-            self.getAliveThread()
+
             if self.hotStarData:
                 # if the hot star is none,
                 # keep the last thread alive none newthread create
@@ -259,22 +284,19 @@ class DouyuSpider(object):
         except RuntimeError as e:
             logging.exception(e)
             self.exit()
+            raise e
+        except AssertionError as e:
+            logging.exception(e)
+            self.exit()
+            raise e
         except Exception as e:
             logging.exception(e)
 
 
+
 if __name__ == '__main__':
-    try:
-        douyu = DouyuSpider()
-        douyu.spiderProccess()
-    except IOError as e:
-        logging.exception(e)
-    except RuntimeError as e:
-        logging.exception(e)
-        douyu .exit()
-    except Exception as e:
-        logging.exception(e)
-        # douyu.exit()
+    from mulpro import God
+    God(DouyuSpider()).run()
 
 
 #python douyuspider.py
