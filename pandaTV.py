@@ -44,7 +44,7 @@ class PandaTV(threading.Thread):
         #SP_MANAGER = '120'
         #HOSTER = '90'
         self.islive=True
-        logging.basicConfig(filename = 'log.txt', filemode = 'a',
+        logging.basicConfig(filename = 'pandadanmulog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
 
         self.showQueue = queue.Queue()
@@ -114,8 +114,9 @@ class PandaTV(threading.Thread):
             strEx='create table if not exists '+sqlTableName+\
             ' (time int(10), name varchar(10), word varchar(50))'
             cursor.execute(strEx)
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
             print('===sqlite3.OperationalError===')
+            logging.exception(e)
         except :
             logging.exception( 'exception')
             # addException2logtxt(traceback)
@@ -136,8 +137,9 @@ class PandaTV(threading.Thread):
                 del(LocalTimeSql[0],snickSql[0],contentSql[0])
                 #print(strEx)
             #print('===save to sql===')
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
                 print('panda danmu database is busy! data is not save')
+                logging.exception(e)
         except Exception as e:
             # info=sys.exc_info()
             # # # print(info[0],":",info[1])
@@ -187,10 +189,6 @@ class PandaTV(threading.Thread):
             logging.exception('ConnectionRefusedError')
             self.exit()
 
-
-
-
-
     def getChatInfo(self):
         roomid=self.roomid
         req = requests.get(self.url, headers=self.hdr)
@@ -219,7 +217,7 @@ class PandaTV(threading.Thread):
                 try:
                     recvmsg = s.recv(4)
                 except ConnectionAbortedError :
-                    logging.exception('ConnectionAbortedError')
+                    # logging.exception('ConnectionAbortedError')
                     self.exit()
                     #self.getChatInfo()
                 if recvmsg == self.RECVMSG:
@@ -233,7 +231,6 @@ class PandaTV(threading.Thread):
                         recvmsg = s.recv(recvLen)#chat msg
                         #print(self.RECVMSG)
                         recvmsg =recvmsg.split(b'{\"type\":')
-                        #print(self.RECVMSG)
                         for chatmsg in recvmsg[1:]:
                             typeContent = re.search(b'\"(\d+)\"',chatmsg)
                             #print(typeContent)

@@ -35,7 +35,7 @@ class DouyuTV(threading.Thread):
         self.sqlTableName = 'TM0000RD0000'
         self.showQueue = queue.Queue()
         self.html = None
-        logging.basicConfig(filename = 'log.txt', filemode = 'a',
+        logging.basicConfig(filename = 'douyudanmulog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
 
         self.hdr = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36',

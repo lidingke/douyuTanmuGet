@@ -1,36 +1,39 @@
-import requests
 import pickle
 import logging
-from lxml import etree
 import sys
-import pdb
 import sqlite3
 import time
-from douyuTV import DouyuTV
+from pandaTV import PandaTV
 import threading
+import abc
 
-class DouyuSpider(object):
-    """docstring for douyuSpider
-    game = 'How'
-    this is the default game, the last address of game area
+class CrawlerGuard(object):
+    """docstring for CrawlerGuard
+    abstract factory pattern
+    subclass need to rewrite requestData()
     """
-    def __init__(self,game = 'How'):
-        super(DouyuSpider, self).__init__()
-        self.url = 'http://www.douyu.com/directory/game/'+game
-        self.numTop = 10000
+    __metaclass__  = abc.ABCMeta
+    def __init__(self, platform = 'panda', area = 'hearthstone'):
+        super(CrawlerGuard, self).__init__()
+        self.platform = platform
+        self.area = area
+        self.crawname = platform + '_' +area
+        # self.url = 'http://www.panda.tv/cate/hearthstone'
+        self.url = self.urlCreater(platform, area)
+        self.numTop = 2000
         self.reloadtime = 30
         self.name = list()
         self.title = list()
         self.number = list()
         self.roomid = list()
         self.hotStarData = list()
-        self.dbName = 'douyuData.db'
-        self.roomidsave = 'douyuRoomid.pickle'
+        self.dbName = platform+'Data.db'
         self.threadList = list()
         self.newThreadList = list()
         self.roomiddict={}
+        self.roomidpickle = platform+'roomid.pickle'
         # self.threadList[0] = ['roomid','number','threadID']
-        logging.basicConfig(filename = 'douyuspiderlog.txt', filemode = 'a',
+        logging.basicConfig(filename = self.platform + 'log.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.roomidPickleInit()
         self.threadDict = {}
@@ -39,53 +42,33 @@ class DouyuSpider(object):
 
     # def logException(self):
 
+    def urlCreater(self, platform = 'panda', area = 'lol'):
+        urldict = {'panda':'http://www.panda.tv/cate/','douyu':'http://www.douyu.com/directory/game/'}
+        return urldict[platform]+area
 
     def roomidPickleInit(self):
+        picklename = self.roomidpickle
         self.roomiddict = dict()
         try:
-            with open(self.roomidsave, 'rb') as f:
+            with open(picklename, 'rb') as f:
                 self.roomiddict = pickle.load(f)
         except FileNotFoundError:
-            with open(self.roomidsave, 'wb') as f1:
+            with open(picklename, 'wb') as f1:
                 entryinit = {}
                 pickle.dump(entryinit, f1)
-            with open(self.roomidsave, 'rb') as f2:
+            with open(picklename, 'rb') as f2:
                 self.roomiddict = pickle.load(f2)
 
     def roomidPickleSave(self):
+        picklename = self.roomidpickle
         print('save a roomid.pickle len = ',len(self.roomiddict))
-        with open(self.roomidsave, 'wb') as f:
+        with open(picklename, 'wb') as f:
             pickle.dump(self.roomiddict, f)
 
-
+    @abc.abstractmethod
     def requestData(self):
-        try:
-            r = requests.get(self.url)
-        except Exception as e:
-            raise e
-            # # print(traceback)
-            # logging.exception(e)
-            # time.sleep(30)
-            # self.requestData()
-        else:
-            r.encoding = 'utf-8'
-            selector = etree.HTML(r.text)
-            self.name = selector.xpath('//*[@id="live-list-contentbox"]/li/a/div/p/span[1]/text()')
-            self.title = selector.xpath('//*[@id="live-list-contentbox"]/li/a/div/div/h3/text()')
-            strnumber = selector.xpath('//*[@id="live-list-contentbox"]/li/a/div/p/span[2]/text()')
-            self.number = list()
-            for num in strnumber:
-                if num.find('万') > 0:
-                    # pdb.set_trace()
-                    self.number.append(int(eval(num[:-1])*10000))
-                else:
-                    self.number.append(int(num))
-            # print(self.number)
-            roomidElement = selector.xpath('//*[@id="live-list-contentbox"]/li')#atribute
-            self.roomid = [x.attrib.get('data-rid') for x in roomidElement]
-            # pdb.set_trace()
-            # print('douyu')
-            print('获取',len(self.name),'条name信息',len(self.title),'条title信息',len(self.number),'条number信息',len(self.roomid),'条roomid信息。')
+        '''request html and return name title number and roomid as a list
+        '''
 
 
     def hotStarDataGet(self):
@@ -99,15 +82,13 @@ class DouyuSpider(object):
             if int(number) > self.numTop:
                 self.hotStarData.append({'name':name,'title':title,'number':number,'roomid':roomid})
             self.roomiddict[roomid] = name
-        # print(self.hotStarData)
 
     def save2sql(self):
         for star in self.hotStarData:
-            # pdb.set_trace()
             conn = sqlite3.connect(self.dbName)
             cursor = conn.cursor()
             nowTime = str(int(time.time()))
-            sqlTableName = 'dTV' + star['roomid']
+            sqlTableName = self.platform +'TV' + star['roomid']
             try:
                 strEx='create table if not exists '+sqlTableName+' (time int(10) primary key, name varchar(10),\
                 title varchar(20), number varchar(10), roomid varchar(10))'
@@ -130,17 +111,15 @@ class DouyuSpider(object):
 
 
     def initTreadDict(self):
-        # pdb.set_trace()
         for star in self.hotStarData:
-            threadAdd = DouyuTV(star['roomid'])
+            threadAdd = PandaTV(star['roomid'])
             threadAdd.setDaemon(True)
-            # print('检测',star['roomid'],type(star),type(star['roomid']))
+            #print('检测',star['roomid'],type(star),type(star['roomid']))
             time.sleep(1)
             threadAdd.start()
             self.threadDict[threadAdd.getName()] = threadAdd
-            # pdb.set_trace()
             print(self.roomiddict[threadAdd.getName()[6:]],'线程初始化')
-            #douyu thread name = "douyu&" + roomid
+            #panda thread name = "panda&" + roomid
         print(len(self.hotStarData),'个弹幕记录线程初始化')
 
 
@@ -159,13 +138,12 @@ class DouyuSpider(object):
                 if threadAdd.isAlive() is False:
                     print('need to recreat:',self.roomiddict[roomid],'线程状态为',threadAdd.isAlive())
                     # time.sleep(1)
-                    reThreadAdd = DouyuTV(roomid)
+                    reThreadAdd = PandaTV(roomid)
                     reThreadAdd.setDaemon(True)
                     reThreadAdd.start()
                     print('recreat:',self.roomiddict[roomid],'线程状态变为',
                         reThreadAdd.isAlive())
                     reThreadDict[roomid] = reThreadAdd
-                    # raise Exception('father 666')
             else:
                 #kill down hot room
                 threadAdd.exit()
@@ -185,22 +163,16 @@ class DouyuSpider(object):
         # new thread creater
         if newThreadDict:
             for newName,hotNumber in newThreadDict.items():
-                threadAdd = DouyuTV(newName)
+                threadAdd = PandaTV(newName)
                 threadAdd.setDaemon(True)
-                if self.threadDict.get('douyu&'+str(newName),False) is False:
+                if self.threadDict.get(self.platform+'&'+str(newName),False) is False:
                     # time.sleep(1)
                     threadAdd.start()
                     self.threadDict[threadAdd.getName()] = threadAdd
                     print('creat:',self.roomiddict[newName],'新线程启动状态为',
                         threadAdd.isAlive())
 
-    def killLastThread(self):
-        if self.aliveThread:
-            for x in self.aliveThread:
-                x.exit()
-                self.threadDict.pop(x.getName()[6:])
-                print('kill last:',self.roomiddict[x.getName()[6:]],'线程状态变为',
-                    x.isAlive())
+
     def getAliveThread(self):
         self.allAliveThread = threading.enumerate()
         if self.aliveThread:
@@ -208,39 +180,12 @@ class DouyuSpider(object):
         # print(self.allAliveThread)
         for x in self.allAliveThread:
             name = x.getName()[:5]
-            if name == 'douyu':
+            if name == 'panda':
                 self.aliveThread.append(x)
-            if len(self.aliveThread) == 0:
-                return
         #print(self.aliveThread)
         print('spider num :',len(self.aliveThread),'dict num:',len(self.threadDict))
         if len(self.aliveThread) > len(self.threadDict):
-            raise AssertionError('more ERROR\
-             thread alive&dict:',len(self.aliveThread),'-',len(self.threadDict))
-
-
-
-        # <script !对比两个线程>
-        # allspider = self.aliveThread
-        # while allspider:
-        #     alin = allspider.pop()
-        #     if allspider:
-        #         for x in allspider:
-        #             if alin.getName() == x.getName():
-        #                 alin.exit()
-        #                 x.exit()
-        #                 print('repeat spider ')
-        #                 print('kill:',self.roomiddict[alin.getName()[6:]],'线程状态变为',
-        #                     alin.isAlive())
-        #                 print('kill:',self.roomiddict[x.getName()[6:]],'线程状态变为',
-        #                     x.isAlive())
-        #                 self.threadDict.pop(alin.getName())
-        #                 self.threadDict.pop(x.getName())
-        # </script>
-                        #kill repeat spider
-                        # raise AssertionError('')
-
-
+            raise AssertionError('spider num ERROR')
 
 
     def show(self):
@@ -254,43 +199,37 @@ class DouyuSpider(object):
 
     def exit(self):
         self.isLive = False
-        print('exit DouyuTVspider')
+        print('exit pandaTV')
 
 
-    def spiderProccess(self):
+    def start(self):
         """
         main proccess
         """
-
         self.requestData()
         self.hotStarDataGet()
         self.save2sql()
         self.show()
-
         self.initTreadDict()
-        # pdb.set_trace()
         self.roomidPickleSave()
 
         while self.isLive:
-            #
-            self.getAliveThread()
+
             self.requestData()
             self.hotStarDataGet()
             self.save2sql()
             self.show()
-
+            self.getAliveThread()
             if self.hotStarData:
                 # if the hot star is none,
                 # keep the last thread alive none newthread create
                 self.newThreadCreate()
-            else:
-                self.killLastThread()
             time.sleep(self.reloadtime)
 
     def run(self):
         try:
             # douyu = DouyuSpider()
-            self.spiderProccess()
+            self.start()
         except IOError as e:
             logging.exception(e)
         except RuntimeError as e:
@@ -305,11 +244,5 @@ class DouyuSpider(object):
             logging.exception(e)
 
 
-
-if __name__ == '__main__':
-    from mulpro import God
-    God(DouyuSpider()).run()
-
-
-#python douyuspider.py
+#python pandaspider.py
 

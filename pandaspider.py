@@ -31,7 +31,7 @@ class PandaSpider(object):
         self.newThreadList = list()
         self.roomiddict={'10091':'囚徒','10029':'王师傅','31131':'SOL君','10027':'瓦莉拉','10025':'冰蓝飞狐','10003':'星妈'}
         # self.threadList[0] = ['roomid','number','threadID']
-        logging.basicConfig(filename = 'spiderlog.txt', filemode = 'a',
+        logging.basicConfig(filename = 'pandaspiderlog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.roomidPickleInit()
         self.threadDict = {}

@@ -23,6 +23,7 @@ class God(object):
             time.sleep(60)
             if self.process.is_alive() == False:
                 print('restart')
+                self.process.terminate()
                 self.process = Process(target=self.guestpro)
                 self.process.start()
 
