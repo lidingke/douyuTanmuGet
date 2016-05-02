@@ -252,6 +252,7 @@ class PandaSpider(object):
             raise e
         except Exception as e:
             logging.exception(e)
+            raise e
 
 
 

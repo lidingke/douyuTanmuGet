@@ -21,7 +21,7 @@ import pickle
 
 class PandaTV(threading.Thread):
     """docstring for PandaTV"""
-    def __init__(self, roomid):
+    def __init__(self, roomid,show = False):
         super(PandaTV, self).__init__()
         threading.Thread.__init__(self)
         self.roomid = str(roomid)
@@ -44,6 +44,7 @@ class PandaTV(threading.Thread):
         #SP_MANAGER = '120'
         #HOSTER = '90'
         self.islive=True
+        self.cmdShow = show
         logging.basicConfig(filename = 'pandadanmulog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
 
@@ -191,7 +192,11 @@ class PandaTV(threading.Thread):
 
     def getChatInfo(self):
         roomid=self.roomid
-        req = requests.get(self.url, headers=self.hdr)
+        try:
+            req = requests.get(self.url, headers=self.hdr)
+        except Exception as e:
+            logging.exception(e)
+            raise e
         if req:
             req.encoding = 'utf-8'
             self.roomiddict[roomid]=self.roomiddict[roomid] if self.roomiddict.get(roomid) else  roomid
@@ -278,7 +283,8 @@ class PandaTV(threading.Thread):
 
 
     def run(self):
-        #threading.Thread(target=PandaTV.show2cmd, args=(self,)).start()
+        if self.cmdShow:
+            threading.Thread(target=PandaTV.show2cmd, args=(self,)).start()
         try:
             self.roomidDictGet()
             self.getChatInfo()
@@ -298,6 +304,10 @@ class PandaTV(threading.Thread):
             print('OSError')
             logging.exception('OSError')
             self.exit()
+        except Exception as e:
+            logging.exception(e)
+            raise e
+
 
 
 
@@ -328,7 +338,7 @@ class PandaTV(threading.Thread):
 
 
 if __name__ == '__main__':
-    idolid= sys.argv[1] if len(sys.argv)>1 else '66666'
+    idolid= sys.argv[1] if len(sys.argv)>1 else '66666'#'31131'
     panda=PandaTV(idolid)
     panda.start()
 

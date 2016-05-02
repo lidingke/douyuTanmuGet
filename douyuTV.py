@@ -21,7 +21,7 @@ import logging
 
 class DouyuTV(threading.Thread):
     """docstring for DouyuTV"""
-    def __init__(self, roomid):
+    def __init__(self, roomid,show = False):
         super(DouyuTV, self).__init__()
         threading.Thread.__init__(self)
         self.roomid = str(roomid)
@@ -35,6 +35,7 @@ class DouyuTV(threading.Thread):
         self.sqlTableName = 'TM0000RD0000'
         self.showQueue = queue.Queue()
         self.html = None
+        self.cmdshow = show
         logging.basicConfig(filename = 'douyudanmulog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
 
@@ -356,7 +357,8 @@ class DouyuTV(threading.Thread):
 
 
     def run(self):
-        # threading.Thread(target=PandaTV.show2cmd, args=(self,)).start()
+        if self.cmdshow:
+            threading.Thread(target=DouyuTV.show2cmd, args=(self,)).start()
         self.roomidDictGet()
         self.staticRequests()
         self.dynamicGet()
