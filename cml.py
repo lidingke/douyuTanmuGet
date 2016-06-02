@@ -12,7 +12,7 @@ import sys
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv)>1 else 'None'
-    rid = sys.argv[1] if len(sys.argv)>1 else None
+    rid = sys.argv[2] if len(sys.argv)>1 else None
     if cmd == 'douyuGuard':
         God(DouyuGuard()).run()
     elif cmd =='pandaGuard':
@@ -28,4 +28,9 @@ if __name__ == '__main__':
     elif cmd == 'pandaNoGuard':
         PandaGuard.run()
     else:
-        print('Command is not found')
+        print('Command is not found:\n\
+            douyuGuard\n\
+            pandaGuard\n\
+            douyuDanmu\n\
+            pandaDanmu\n\
+            ')

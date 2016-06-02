@@ -28,7 +28,7 @@ class DouyuTV(threading.Thread):
         self.name = 'douyu&' + self.roomid
         self.islive = True
         self.logServer={'status':'0'}
-        self.danmuServer={'add':'danmu.douyutv.com','port':'12602','gid':'1','rid':str(roomid)}
+        self.danmuServer={'add':'log\\danmu.douyutv.com','port':'12602','gid':'1','rid':str(roomid)}
         self.sock=None
         self.sqlfileName = 'douyudanmu.db'
         self.danmuStatus =True

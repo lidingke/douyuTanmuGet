@@ -33,7 +33,7 @@ class CrawlerGuard(object):
         self.roomiddict={}
         self.roomidpickle = platform+'roomid.pickle'
         # self.threadList[0] = ['roomid','number','threadID']
-        logging.basicConfig(filename = self.platform + 'log.txt', filemode = 'a',
+        logging.basicConfig(filename = 'log\\{}_guardlog.txt'.format(self.platform), filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.roomidPickleInit()
         self.threadDict = {}

@@ -26,11 +26,9 @@ class PandaTV(threading.Thread):
         threading.Thread.__init__(self)
         self.roomid = str(roomid)
         self.name = 'panda&' + self.roomid
-
-        self.roomiddict={'10091':'囚徒','10029':'王师傅','31131':'SOL君','10027':'瓦莉拉','10025':'冰蓝飞狐','10003':'星妈'}
-
+        self.roomiddict={}
+        # '10091':'囚徒','10029':'王师傅','31131':'SOL君','10027':'瓦莉拉','10025':'冰蓝飞狐','10003':'星妈'
         self.CHATINFOURL = 'http://www.panda.tv/ajax_chatinfo?roomid='
-
         self.IGNORE_LEN = 16
         self.FIRST_REQ = b'\x00\x06\x00\x02'
         self.FIRST_RPS = b'\x00\x06\x00\x06'
@@ -38,16 +36,16 @@ class PandaTV(threading.Thread):
         self.RECVMSG = b'\x00\x06\x00\x03'
         #BAMBOO_TYPE = '206'
         #AUDIENCE_TYPE = '207'
-        self.SYSINFO = platform.system()
+        # self.SYSINFO = platform.system()
         #INIT_PROPERTIES = 'init.properties'
         #MANAGER = '60'
         #SP_MANAGER = '120'
         #HOSTER = '90'
         self.islive=True
         self.cmdShow = show
-        logging.basicConfig(filename = 'pandadanmulog.txt', filemode = 'a',
+        self.msglist = list()
+        logging.basicConfig(filename = 'log\\pandadanmulog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
-
         self.showQueue = queue.Queue()
         self.url = self.CHATINFOURL + self.roomid
         self.hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11\
@@ -77,30 +75,24 @@ class PandaTV(threading.Thread):
             self.roomiddict = {}
         except EOFError:
             self.roomiddict = {}
-
         self.roomidDictRe =  dict([(v,k) for k,v in self.roomiddict.items()])
-
-
 
     # def txtThread(self,*traceback):
     #     fadd=open("log.txt",'w')
     #     fadd.writelines(''.join(traceback))
     #     fadd.close()
-
-
-    def notify(self,title, message):
-        #about compatibility?
-        if self.SYSINFO == 'Windows':
-            pass
-        elif self.SYSINFO == 'Linux':
-            os.system('notify-send {}'.format(': '.join([title, message])))
-        else:   #for mac
-            t = '-title {!r}'.format(title)
-            m = '-message {!r}'.format(message)
-            os.system('terminal-notifier {} -sound default'.format(' '.join([m, t])))
-    #             print(nickName + ":" + content)
-    #             notify(nickName, content)
-
+    # def notify(self,title, message):
+    #     #about compatibility?
+    #     if self.SYSINFO == 'Windows':
+    #         pass
+    #     elif self.SYSINFO == 'Linux':
+    #         os.system('notify-send {}'.format(': '.join([title, message])))
+    #     else:   #for mac
+    #         t = '-title {!r}'.format(title)
+    #         m = '-message {!r}'.format(message)
+    #         os.system('terminal-notifier {} -sound default'.format(' '.join([m, t])))
+    # #             print(nickName + ":" + content)
+    # #             notify(nickName, content)
 
     def initSql(self):
         localTime=time.localtime()
@@ -127,16 +119,16 @@ class PandaTV(threading.Thread):
         return sqlTableName
 
 
-    def save2Sql(self,sqlTableName,contentSql,snickSql,LocalTimeSql):
+    def save2Sql(self,sqlTableName,context):
         conn = sqlite3.connect('pandadanmu.db')
         cursor = conn.cursor()
         try:
-            while LocalTimeSql:
-                strEx='insert into '+sqlTableName+' (time, name, word) values ('\
-                    +str(LocalTimeSql[0])+',\''+snickSql[0]+'\',\''+contentSql[0]+'\')'
+            for x in context:
+                # strEx='insert into '+sqlTableName+' (time, name, word) values ('\
+                #     +str(x[0])+',\''+x[1]+'\',\''+contentSql[2]+'\')'
+                strEx='insert into {} (time, name, word) values ( {}, \'{}\' ,\'{}\' )'.format(sqlTableName,x[0],x[1],x[2])
                 cursor.execute(strEx)
-                del(LocalTimeSql[0],snickSql[0],contentSql[0])
-                #print(strEx)
+            context.clear()
             #print('===save to sql===')
         except sqlite3.OperationalError as e:
                 print('panda danmu database is busy! data is not save')
@@ -152,10 +144,18 @@ class PandaTV(threading.Thread):
 
 
 
-    def KEEPALIVE(self,sock):
+    def keepAlive(self):
         while self.islive:
             print('====',self.roomiddict[self.roomid],' KEEPALIVE ===')
-            sock.send(self.KEEPALIVE)
+            try:
+                self.sock.send(self.KEEPALIVE)
+            except TimeoutError:
+                self.exit()
+            except Exception as e:
+                raise e
+            finally:
+                self.sock.close
+
             for x in range(1,300):
                 time.sleep(1)
                 if self.islive is False:
@@ -164,16 +164,20 @@ class PandaTV(threading.Thread):
                     return
 
     def log2server(self,ftag):
-        try:
+        if ftag.text:
             data = ftag.text
             # print(data)
             # data = ftag.read().decode('utf-8')
             chatInfo = json.loads(data)
+            print('chatInfo',chatInfo)
+            if chatInfo['data'] == '':
+                raise RuntimeError('None chatInfo maybe room is closed')
             chatAddr = chatInfo['data']['chat_addr_list'][0]
             socketIP = chatAddr.split(':')[0]
             socketPort = int(chatAddr.split(':')[1])
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock = s
+        try:
             s.connect((socketIP,socketPort))
             rid      = str(chatInfo['data']['rid']).encode('utf-8')
             appid    = str(chatInfo['data']['appid']).encode('utf-8')
@@ -184,11 +188,16 @@ class PandaTV(threading.Thread):
             msgLen = len(msg)
             sendMsg = self.FIRST_REQ + int.to_bytes(msgLen, 2, 'big') + msg
             s.sendall(sendMsg)
-            return s
+            # return s
         except ConnectionRefusedError:
             print('ConnectionRefusedError')
             logging.exception('ConnectionRefusedError')
             self.exit()
+        except Exception as e:
+            logging.exception(e)
+            raise e
+        finally:
+            return s
 
     def getChatInfo(self):
         roomid=self.roomid
@@ -199,10 +208,7 @@ class PandaTV(threading.Thread):
             raise e
         if req:
             req.encoding = 'utf-8'
-            self.roomiddict[roomid]=self.roomiddict[roomid] if self.roomiddict.get(roomid) else  roomid
-        # print('这里是主播：',self.roomiddict[roomid],'的直播间')
-            # with urllib.request.urlopen(req) as f:
-                #urllib.error.HTTPError
+            self.roomiddict[roomid] = self.roomiddict[roomid] if self.roomiddict.get(roomid) else  roomid
             s =  self.log2server(req)
             # s =  self.log2server(f)
             recvmsg = s.recv(4)
@@ -210,13 +216,13 @@ class PandaTV(threading.Thread):
                 print('成功连接弹幕服务器：',self.roomiddict[roomid])
                 recvLen = int.from_bytes(s.recv(2), 'big')
 
-            threading.Thread(target=PandaTV.KEEPALIVE,args=(self,s,)).start()
+            threading.Thread(target=self.keepAlive,  daemon = True).start()
 
             sqlTableName=self.initSql()
 
-            contentMsg=list()
-            snickMsg=list()
-            LocalMsgTime=list()
+            # contentMsg=list()
+            # snickMsg=list()
+            # LocalMsgTime=list()
 
             while self.islive:
                 try:
@@ -242,24 +248,26 @@ class PandaTV(threading.Thread):
                             if typeContent:
                                 if typeContent.group(1) == b'1':
                                     try:
-                                        contentMsg.append(b''.join(re.findall(b'\"content\":\"(.*?)\"',chatmsg)).decode('unicode_escape'))
-                                        snickMsg.append(b''.join(re.findall(b'\"nickName\":\"(.*?)\"',chatmsg)).decode('unicode_escape'))
-                                        LocalMsgTime.append(int(time.time()))
-                                        strprint =snickMsg[-1]+':'+contentMsg[-1]
+                                        contentMsg = b''.join(re.findall(b'\"content\":\"(.*?)\"',chatmsg)).decode('unicode_escape')
+                                        snickMsg = b''.join(re.findall(b'\"nickName\":\"(.*?)\"',chatmsg)).decode('unicode_escape')
+                                        LocalMsgTime = str(int(time.time()))
+                                        self.msglist.append((LocalMsgTime,snickMsg,contentMsg))
+                                        strprint =snickMsg+':'+contentMsg
                                         self.showQueue.put(strprint)
                                         # print(strprint)
                                     except :
                                         logging.exception('msg error')
                                         # threading.Thread(target=PandaTV.txtThread, args=(self,traceback,)).start()
                                 elif typeContent.group(1) == b'207':
-                                    contentSql=copy.deepcopy(contentMsg)
-                                    snickSql=copy.deepcopy(snickMsg)
-                                    LocalTimeSql=copy.deepcopy(LocalMsgTime)
-                                    contentMsg.clear()
-                                    snickMsg.clear()
-                                    LocalMsgTime.clear()
-                                    if len(contentSql) is not None:
-                                        threading.Thread(target=PandaTV.save2Sql, args=(self,sqlTableName,contentSql,snickSql,LocalTimeSql,)).start()
+                                    # contentSql=copy.deepcopy(contentMsg)
+                                    # snickSql=copy.deepcopy(snickMsg)
+                                    # LocalTimeSql=copy.deepcopy(LocalMsgTime)
+                                    # contentMsg.clear()
+                                    # snickMsg.clear()
+                                    # LocalMsgTime.clear()
+                                    if self.msglist:
+                                        threading.Thread(target=self.save2Sql, args=(sqlTableName,self.msglist)).start()
+                                        self.msglist = list()
                                 elif typeContent.group(1) == b'206':
                                     goldNum=b''.join(re.findall(b'\"content\":\"(.*?)\"',chatmsg)).decode('unicode_escape')
                                     goldNikname=b''.join(re.findall(b'\"nickName\":\"(.*?)\"',chatmsg)).decode('unicode_escape')
@@ -284,7 +292,7 @@ class PandaTV(threading.Thread):
 
     def run(self):
         if self.cmdShow:
-            threading.Thread(target=PandaTV.show2cmd, args=(self,)).start()
+            threading.Thread(target=PandaTV.show2cmd, args=(self,), daemon = True).start()
         try:
             self.roomidDictGet()
             self.getChatInfo()
@@ -338,7 +346,7 @@ class PandaTV(threading.Thread):
 
 
 if __name__ == '__main__':
-    idolid= sys.argv[1] if len(sys.argv)>1 else '66666'#'31131'
+    idolid= sys.argv[1] if len(sys.argv)>1 else '10029'#'31131'
     panda=PandaTV(idolid)
     panda.start()
 

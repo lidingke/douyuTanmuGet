@@ -10,4 +10,6 @@ exe
 error
 __pycache__
 *.db-journal
+log
+
 
