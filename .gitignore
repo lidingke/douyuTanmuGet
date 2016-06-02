@@ -3,6 +3,7 @@
 *.db
 wireshark
 .idea
+*.pickle
 *.swp
 *.bat
 study
