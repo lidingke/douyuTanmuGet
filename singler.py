@@ -4,15 +4,19 @@ from lxml import etree
 import logging
 from multiprocessing import Process
 import time
+from douyuTV import DouyuTV
+from pandaTV import PandaTV
 
 
 class DouyuGuard(CrawlerGuard):
     """docstring for DouyuGuard"""
     def __init__(self, platform = 'douyu', area = 'How'):
+        self.method = DouyuTV
         super(DouyuGuard, self).__init__(platform,area)
         self.platform = platform
         self.area = area
         self.numTop = 10000
+
 
     def requestData(self):
         try:
@@ -47,6 +51,7 @@ class DouyuGuard(CrawlerGuard):
 class PandaGuard(CrawlerGuard):
     """docstring for PandaGuard"""
     def __init__(self, platform = 'panda', area = 'hearthstone'):
+        self.method = PandaTV
         super(PandaGuard, self).__init__(platform,area)
         self.platform = platform
         self.area = area
@@ -68,6 +73,7 @@ class PandaGuard(CrawlerGuard):
             self.number = selector.xpath('//*[@id="sortdetail-container"]/li/a/div[3]/span[2]/text()')
             roomidElement = selector.xpath('//*[@id="sortdetail-container"]/li/a')#atribute
             self.roomid = [x.get('data-id') for x in roomidElement]
+            # print('name',self.name)
             print('获取',len(self.name),'条name信息',len(self.title),'条title信息',len(self.number),'条number信息',len(self.roomid),'条roomid信息。')
 
 
@@ -96,6 +102,6 @@ class God(object):
 
 if __name__ == '__main__':
     # from mulpro import God
-    p = PandaGuard()
+    p = DouyuGuard()
     p.run()
     # God(PandaGuard()).run()

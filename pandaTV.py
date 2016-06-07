@@ -43,11 +43,13 @@ class PandaTV(threading.Thread):
         #HOSTER = '90'
         self.islive=True
         self.cmdShow = show
+        self.setDaemon(True)
         self.msglist = list()
         logging.basicConfig(filename = 'log\\pandadanmulog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.showQueue = queue.Queue()
         self.url = self.CHATINFOURL + self.roomid
+        # print('url=',self.url)
         self.hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11\
          (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -169,7 +171,7 @@ class PandaTV(threading.Thread):
             # print(data)
             # data = ftag.read().decode('utf-8')
             chatInfo = json.loads(data)
-            print('chatInfo',chatInfo)
+            # print('chatInfo',chatInfo)
             if chatInfo['data'] == '':
                 raise RuntimeError('None chatInfo maybe room is closed')
             chatAddr = chatInfo['data']['chat_addr_list'][0]

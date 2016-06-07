@@ -24,13 +24,12 @@ if __name__ == '__main__':
         roomid= rid if len(rid)>1 else '66666'
         PandaTV(roomid,show=True).start()
     elif cmd == 'douyuNoGuard':
-        DouyuGuard.run()
+        DouyuGuard().run()
     elif cmd == 'pandaNoGuard':
-        PandaGuard.run()
+        PandaGuard().run()
     else:
         print('Command is not found:\n\
             douyuGuard\n\
             pandaGuard\n\
             douyuDanmu\n\
-            pandaDanmu\n\
-            ')
+            pandaDanmu\n\')

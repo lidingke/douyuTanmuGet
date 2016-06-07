@@ -36,6 +36,7 @@ class DouyuTV(threading.Thread):
         self.showQueue = queue.Queue()
         self.html = None
         self.cmdshow = show
+        self.setDaemon(True)
         logging.basicConfig(filename = 'douyudanmulog.txt', filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
 
@@ -287,7 +288,7 @@ class DouyuTV(threading.Thread):
                         contentMsg=list()
                         snickMsg=list()
                         LocalMsgTime=list()
-                        threading.Thread(target=DouyuTV.save2Sql, args=(self,contentSql,snickSql,LocalTimeSql,)).start()
+                        threading.Thread(target=self.save2Sql, args=(contentSql,snickSql,LocalTimeSql,)).start()
 
 
     def danmuProcce(self):
@@ -304,7 +305,7 @@ class DouyuTV(threading.Thread):
         msg='type@=joingroup/rid@='+rid+'/gid@='+gid+'/\x00'
         self.sendmsg(msg)
 
-        threading.Thread(target=DouyuTV.keeplive, args=(self,)).start()
+        threading.Thread(target= self.keeplive).start()
         # print('danmu proccessing')
         #open SQL
         localTime=time.localtime()
@@ -358,7 +359,7 @@ class DouyuTV(threading.Thread):
 
     def run(self):
         if self.cmdshow:
-            threading.Thread(target=DouyuTV.show2cmd, args=(self,)).start()
+            threading.Thread(target=self.show2cmd).start()
         self.roomidDictGet()
         self.staticRequests()
         self.dynamicGet()

@@ -6,6 +6,10 @@ import time
 from pandaTV import PandaTV
 import threading
 import abc
+from taskDict import TaskDict
+import pdb
+
+
 
 class CrawlerGuard(object):
     """docstring for CrawlerGuard
@@ -17,23 +21,26 @@ class CrawlerGuard(object):
         super(CrawlerGuard, self).__init__()
         self.platform = platform
         self.area = area
-        self.crawname = platform + '_' +area
+        # self.crawname = platform + '_' +area
         # self.url = 'http://www.panda.tv/cate/hearthstone'
         self.url = self.urlCreater(platform, area)
         self.numTop = 2000
-        self.reloadtime = 30
+        self.reloadtime = 10
         self.name = list()
         self.title = list()
         self.number = list()
         self.roomid = list()
         self.hotStarData = list()
         self.dbName = platform+'Data.db'
-        self.threadList = list()
-        self.newThreadList = list()
+        # self.threadList = list()
+        # self.newThreadList = list()
+        self.hotStarDict = {}
+        self.taskDict = TaskDict(self.method,self.numTop)
+        # self.method =
         self.roomiddict={}
         self.roomidpickle = platform+'roomid.pickle'
         # self.threadList[0] = ['roomid','number','threadID']
-        logging.basicConfig(filename = 'log\\{}_guardlog.txt'.format(self.platform), filemode = 'a',
+        logging.basicConfig(filename = 'log\{}_guardlog.txt'.format(self.platform), filemode = 'a',
             level = logging.ERROR, format = '%(asctime)s - %(levelname)s: %(message)s')
         self.roomidPickleInit()
         self.threadDict = {}
@@ -48,7 +55,6 @@ class CrawlerGuard(object):
 
     def roomidPickleInit(self):
         picklename = self.roomidpickle
-        self.roomiddict = dict()
         try:
             with open(picklename, 'rb') as f:
                 self.roomiddict = pickle.load(f)
@@ -70,19 +76,6 @@ class CrawlerGuard(object):
         '''request html and return name title number and roomid as a list
         '''
 
-
-    def hotStarDataGet(self):
-        if self.hotStarData:
-            self.hotStarData.clear()
-        while self.name :
-            name = self.name.pop()
-            title = self.title.pop()
-            number = self.number.pop()
-            roomid = self.roomid.pop()
-            if int(number) > self.numTop:
-                self.hotStarData.append({'name':name,'title':title,'number':number,'roomid':roomid})
-            self.roomiddict[roomid] = name
-
     def save2sql(self):
         for star in self.hotStarData:
             conn = sqlite3.connect(self.dbName)
@@ -101,7 +94,7 @@ class CrawlerGuard(object):
             except sqlite3.OperationalError as e:
                 print(self.dbName,e)
             except sqlite3.IntegrityError as e :
-                strEx = "insert into " + sqlTableName + "( number ) values (" + star['number'] + ")"
+                strEx = "insert into " + sqlTableName + "( number ) values (" + str(star['number']) + ")"
                 print(strEx)
                 cursor.execute(strEx)
             #except sqlite3.OperationalError as e:
@@ -110,86 +103,125 @@ class CrawlerGuard(object):
             conn.close()
 
 
-    def initTreadDict(self):
-        for star in self.hotStarData:
-            threadAdd = PandaTV(star['roomid'])
-            threadAdd.setDaemon(True)
-            #print('检测',star['roomid'],type(star),type(star['roomid']))
-            time.sleep(1)
-            threadAdd.start()
-            self.threadDict[threadAdd.getName()] = threadAdd
-            print(self.roomiddict[threadAdd.getName()[6:]],'线程初始化')
-            #panda thread name = "panda&" + roomid
-        print(len(self.hotStarData),'个弹幕记录线程初始化')
 
+    def hotStarDataGet(self):
+        # print(self.hotStarData)
+        if self.hotStarData:
+            self.hotStarData.clear()
+        for x,v in enumerate(self.name):
+            # pdb.set_trace()
+            self.hotStarData.append({'name':self.name[x],
+                'title':self.title[x],
+                'number':self.number[x],
+                'roomid':self.roomid[x]})
+            # pdb.set_trace()
+            # print(self.hotStarData['name'])
+            # self.roomiddict[roomid] = name
+            # pdb.set_trace()
+
+            # self.taskDict[self.roomid[x]] = int(self.number[x])
+
+        self.newThreadCreate()
 
     def newThreadCreate(self):
-        newThreadDict = dict()
-        killTread = list()
-        reThreadDict = dict()
-        for star in self.hotStarData:
-            newThreadDict[star['roomid']] = star['number']
-        # old thread checker
-        for threadName,threadAdd in self.threadDict.items():
-            roomid = threadName[6:]
-            #restart Dead thread
-            if newThreadDict.pop(roomid,False) is not False:
+        ''' Task dict is a mode to test limite and create new thread
+        '''
+        delkey = None
+        if self.hotStarData:
+            for x in self.hotStarData:
+                self.hotStarDict[x['roomid']] = x['number']
+            for k,v in self.hotStarDict.items():
+                self.taskDict[k] = v
+                if self.hotStarDict[k] == -1:
+                    delkey = k
+                else:
+                    self.hotStarDict[k] = -1
+            if delkey:
+                self.hotStarDict.pop(delkey)
 
-                if threadAdd.isAlive() is False:
-                    print('need to recreat:',self.roomiddict[roomid],'线程状态为',threadAdd.isAlive())
-                    # time.sleep(1)
-                    reThreadAdd = PandaTV(roomid)
-                    reThreadAdd.setDaemon(True)
-                    reThreadAdd.start()
-                    print('recreat:',self.roomiddict[roomid],'线程状态变为',
-                        reThreadAdd.isAlive())
-                    reThreadDict[roomid] = reThreadAdd
-            else:
-                #kill down hot room
-                threadAdd.exit()
-                killTread.append(threadName)
-                print('kill:',self.roomiddict[roomid],'线程状态变为',
-                    threadAdd.isAlive())
 
-        print('newthreaddict：',len(newThreadDict))
 
-        # del dead thread in self.threadict
-        for deltread in killTread:
-            self.threadDict.pop(deltread)
-        # reload thread in self.threaddict
-        for k,v in reThreadDict.items():
-            if self.threadDict.get(k):
-                self.threadDict[k] = v
-        # new thread creater
-        if newThreadDict:
-            for newName,hotNumber in newThreadDict.items():
-                threadAdd = PandaTV(newName)
-                threadAdd.setDaemon(True)
-                if self.threadDict.get(self.platform+'&'+str(newName),False) is False:
-                    # time.sleep(1)
-                    threadAdd.start()
-                    self.threadDict[threadAdd.getName()] = threadAdd
-                    print('creat:',self.roomiddict[newName],'新线程启动状态为',
-                        threadAdd.isAlive())
+    # def initTreadDict(self):
+    #     for star in self.hotStarData:
+    #         threadAdd = PandaTV(star['roomid'])
+    #         threadAdd.setDaemon(True)
+    #         #print('检测',star['roomid'],type(star),type(star['roomid']))
+    #         time.sleep(1)
+    #         threadAdd.start()
+    #         self.threadDict[threadAdd.getName()] = threadAdd
+    #         print(self.roomiddict[threadAdd.getName()[6:]],'线程初始化')
+    #         #panda thread name = "panda&" + roomid
+    #     print(len(self.hotStarData),'个弹幕记录线程初始化')
+
+
+    # def newThreadCreate(self):
+    #     newThreadDict = dict()
+    #     killTread = list()
+    #     reThreadDict = dict()
+    #     for star in self.hotStarData:
+    #         newThreadDict[star['roomid']] = star['number']
+    #     # old thread checker
+    #     for threadName,threadAdd in self.threadDict.items():
+    #         roomid = threadName[6:]
+    #         #restart Dead thread
+    #         if newThreadDict.pop(roomid,False) is not False:
+
+    #             if threadAdd.isAlive() is False:
+    #                 print('need to recreat:',self.roomiddict[roomid],'线程状态为',threadAdd.isAlive())
+    #                 # time.sleep(1)
+    #                 reThreadAdd = PandaTV(roomid)
+    #                 reThreadAdd.setDaemon(True)
+    #                 reThreadAdd.start()
+    #                 print('recreat:',self.roomiddict[roomid],'线程状态变为',
+    #                     reThreadAdd.isAlive())
+    #                 reThreadDict[roomid] = reThreadAdd
+    #         else:
+    #             #kill down hot room
+    #             threadAdd.exit()
+    #             killTread.append(threadName)
+    #             print('kill:',self.roomiddict[roomid],'线程状态变为',
+    #                 threadAdd.isAlive())
+
+    #     print('newthreaddict：',len(newThreadDict))
+
+    #     # del dead thread in self.threadict
+    #     for deltread in killTread:
+    #         self.threadDict.pop(deltread)
+    #     # reload thread in self.threaddict
+    #     for k,v in reThreadDict.items():
+    #         if self.threadDict.get(k):
+    #             self.threadDict[k] = v
+    #     # new thread creater
+    #     if newThreadDict:
+    #         for newName,hotNumber in newThreadDict.items():
+    #             threadAdd = PandaTV(newName)
+    #             threadAdd.setDaemon(True)
+    #             if self.threadDict.get(self.platform+'&'+str(newName),False) is False:
+    #                 # time.sleep(1)
+    #                 threadAdd.start()
+    #                 self.threadDict[threadAdd.getName()] = threadAdd
+    #                 print('creat:',self.roomiddict[newName],'新线程启动状态为',
+    #                     threadAdd.isAlive())
 
 
     def getAliveThread(self):
-        self.allAliveThread = threading.enumerate()
+        allAliveThread = threading.enumerate()
+        print('allAliveThread num',len(allAliveThread))
         if self.aliveThread:
             self.aliveThread.clear()
-        # print(self.allAliveThread)
-        for x in self.allAliveThread:
+        # print(allAliveThread)
+        for x in allAliveThread:
             name = x.getName()[:5]
-            if name == 'panda':
+            if name == self.platform:
                 self.aliveThread.append(x)
         #print(self.aliveThread)
-        print('spider num :',len(self.aliveThread),'dict num:',len(self.threadDict))
-        if len(self.aliveThread) > len(self.threadDict):
-            raise AssertionError('spider num ERROR')
+        print('spider num :',len(self.aliveThread),'dict num:',len(self.taskDict))
+        # if len(self.aliveThread) > len(self.threadDict):
+        #     raise AssertionError('spider num ERROR')
 
 
     def show(self):
-        print('人气超过',str(self.numTop),'的有',len(self.hotStarData),'人')
+        print('人气超过',str(self.numTop),'的有',len(self.taskDict),'人')
 
             # if x is '':
             #     pass
@@ -206,24 +238,16 @@ class CrawlerGuard(object):
         """
         main proccess
         """
-        self.requestData()
-        self.hotStarDataGet()
-        self.save2sql()
-        self.show()
-        self.initTreadDict()
-        self.roomidPickleSave()
-
         while self.isLive:
-
             self.requestData()
             self.hotStarDataGet()
             self.save2sql()
             self.show()
             self.getAliveThread()
-            if self.hotStarData:
+            # if self.hotStarData:
                 # if the hot star is none,
                 # keep the last thread alive none newthread create
-                self.newThreadCreate()
+            # self.newThreadCreate()
             time.sleep(self.reloadtime)
 
     def run(self):
@@ -232,6 +256,7 @@ class CrawlerGuard(object):
             self.start()
         except IOError as e:
             logging.exception(e)
+            raise e
         except RuntimeError as e:
             logging.exception(e)
             self.exit()
@@ -242,7 +267,12 @@ class CrawlerGuard(object):
             raise e
         except Exception as e:
             logging.exception(e)
+            raise e
 
 
-#python pandaspider.py
+# class DanmuThread(threading.Thread):
+#     """docstring for DanmuThread"""
+#     def __init__(self):
+#         super(DanmuThread, self).__init__()
+#         self.arg = arg
 
