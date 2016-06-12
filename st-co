@@ -1,0 +1,40 @@
+{
+    // The tab key will cycle through the settings when first created
+    // Visit http://wbond.net/sublime_packages/sftp/settings for help
+
+    // sftp, ftp or ftps
+    "type": "sftp",
+    "upload_on_save": true,
+    "sync_down_on_open": true,
+    "sync_same_age": true,
+
+    "host": "ec2-52-78-41-171.ap-northeast-2.compute.amazonaws.com",
+    "user": "ubuntu",
+    //"password": "password",
+    "port": "22",
+
+    "remote_path": "\/home\/ubuntu\/douyuTanmuGet",
+    "ignore_regexes": [
+        "\\.sublime-(project|workspace)", "sftp-config(-alt\\d?)?\\.json",
+        "sftp-settings\\.json", "/venv/", "\\.svn/", "\\.hg/", "\\.db","\\.pyc",
+        "\\.bzr", "_darcs", "CVS", "\\.DS_Store", "Thumbs\\.db", "desktop\\.ini"
+    ],
+    //"file_permissions": "664",
+    //"dir_permissions": "775",
+
+    //"extra_list_connections": 0,
+
+    "connect_timeout": 30,
+    "keepalive": 120,
+    //"ftp_passive_mode": true,
+    //"ftp_obey_passive_host": false,
+    "ssh_key_file": "C:\\aws\\ubuntu2.ppk",
+    //"sftp_flags": ["-F", "/path/to/ssh_config"],
+
+
+    //"preserve_modification_times": false,
+    //"remote_time_offset_in_hours": 0,
+    "remote_encoding": "utf-8",
+    //"remote_locale": "C",
+    //"allow_config_upload": false,
+}
