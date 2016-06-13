@@ -116,7 +116,7 @@ class CrawlerGuard(object):
                 'roomid':self.roomid[x]})
             # pdb.set_trace()
             # print(self.hotStarData['name'])
-            # self.roomiddict[roomid] = name
+            self.roomiddict[self.roomid[x]] = self.name[x]
             # pdb.set_trace()
 
             # self.taskDict[self.roomid[x]] = int(self.number[x])
@@ -211,11 +211,18 @@ class CrawlerGuard(object):
             self.aliveThread.clear()
         # print(allAliveThread)
         for x in allAliveThread:
-            name = x.getName()[:5]
-            if name == self.platform:
-                self.aliveThread.append(x)
+            # name = x.getName()[:5]
+            name = x.getName()
+            if name.find('&') > 0:
+                name = x.getName().split('&')
+                platName = name[0]
+                roomid = name[1]
+
+                if platName == self.platform:
+                    self.aliveThread.append(self.roomiddict.get(roomid,''))
         #print(self.aliveThread)
         print('spider num :',len(self.aliveThread),'dict num:',len(self.taskDict))
+        print('alive idio',self.aliveThread)
         # if len(self.aliveThread) > len(self.threadDict):
         #     raise AssertionError('spider num ERROR')
 
@@ -231,7 +238,7 @@ class CrawlerGuard(object):
 
     def exit(self):
         self.isLive = False
-        print('exit pandaTV')
+        print('exit ',self.platform)
 
 
     def start(self):
@@ -249,6 +256,7 @@ class CrawlerGuard(object):
                 # keep the last thread alive none newthread create
             # self.newThreadCreate()
             time.sleep(self.reloadtime)
+            self.roomidPickleSave()
 
     def run(self):
         try:
@@ -259,11 +267,11 @@ class CrawlerGuard(object):
             raise e
         except RuntimeError as e:
             logging.exception(e)
-            self.exit()
+            # self.exit()
             raise e
         except AssertionError as e:
             logging.exception(e)
-            self.exit()
+            # self.exit()
             raise e
         except Exception as e:
             logging.exception(e)

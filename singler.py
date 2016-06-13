@@ -15,7 +15,7 @@ class DouyuGuard(CrawlerGuard):
         super(DouyuGuard, self).__init__(platform,area)
         self.platform = platform
         self.area = area
-        self.numTop = 10000
+        self.numTop = 50000
 
 
     def requestData(self):

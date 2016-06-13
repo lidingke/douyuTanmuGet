@@ -32,4 +32,4 @@ if __name__ == '__main__':
             douyuGuard\n\
             pandaGuard\n\
             douyuDanmu\n\
-            pandaDanmu\n\')
+            pandaDanmu\n')
